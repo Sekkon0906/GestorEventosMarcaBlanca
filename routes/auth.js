@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
+const notificationService = require('../services/notification.service');
 
 const usuarios = [];
 const SECRET = 'eventos_marca_blanca_secret';
@@ -19,6 +20,17 @@ router.post('/register', (req, res) => {
 
   const usuario = { id: Date.now(), nombre, email, password };
   usuarios.push(usuario);
+
+  // Notificación aislada: su fallo NO cancela el registro
+  try {
+    notificationService.create({
+      type: 'USER_REGISTRATION',
+      message: `Nuevo usuario registrado: ${nombre} (${email})`,
+      userId: usuario.id,
+    });
+  } catch (err) {
+    console.warn('[Notifications] No se pudo registrar la notificación:', err.message);
+  }
 
   res.status(201).json({
     mensaje: 'Usuario registrado exitosamente',
