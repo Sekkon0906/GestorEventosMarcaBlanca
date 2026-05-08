@@ -12,6 +12,7 @@ app.use(express.json());
 // Rutas existentes
 app.use('/auth',    require('./routes/auth'));
 app.use('/eventos', require('./routes/eventos'));
+app.use('/usuarios', require('./routes/usuarios'));
 
 // Rutas de notificaciones
 app.use('/api/notifications', require('./routes/notification.routes'));
@@ -47,6 +48,13 @@ app.get('/', (req, res) => {
       'GET  /eventos/categorias',
       'GET  /api/notifications',
       'PATCH /api/notifications/:id/read',
+      'GET    /usuarios                   [admin_global]',
+      'GET    /usuarios/me/permisos       [autenticado]',
+      'GET    /usuarios/:id               [admin_global]',
+      'PATCH  /usuarios/:id/rol           [admin_global]',
+      'PATCH  /usuarios/:id/permisos      [admin_global]',
+      'GET    /usuarios/:id/permisos      [admin_global]',
+      'DELETE /usuarios/:id               [admin_global]',
     ]
   });
 });
