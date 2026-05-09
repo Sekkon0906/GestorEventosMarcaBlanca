@@ -1,12 +1,13 @@
 const router = require('express').Router();
 const webpush = require('web-push');
 
-// Claves VAPID generadas para este proyecto
-const VAPID_PUBLIC = 'BPATak7DbzcrvYhwQzgGYlmOHSybwQ5n-Z1TdzE0PLxzaRHcRbcUnMPNVpbij7jJJCsft85rJAjDUrqDaMrjPCU';
-const VAPID_PRIVATE = '5-ZNjyXSN1nL4Hhj7tx7dJ6WsXbSR2Rz3U1B_dJADKo';
+// Claves VAPID desde variables de entorno (nunca en el codigo)
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC;
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE;
+const VAPID_EMAIL   = process.env.VAPID_EMAIL || 'mailto:cristhian@test.com';
 
 webpush.setVapidDetails(
-  'mailto:cristhian@test.com',
+  VAPID_EMAIL,
   VAPID_PUBLIC,
   VAPID_PRIVATE
 );
