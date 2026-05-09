@@ -21,7 +21,7 @@ const initialForm = {
   tags: ['tecnología', '2026'],
 }
 
-export default function CrearEvento() {
+export default function CrearEvento({ onVolver }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
@@ -61,13 +61,13 @@ export default function CrearEvento() {
         <div className={styles.logo}>SEMB</div>
         <div className={styles.navRight}>
           <div className={styles.avatar} />
-          <span className={styles.userName}>Alejandro M.</span>
+          <span className={styles.userName}>Nombre de usuario</span>
         </div>
       </nav>
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
-        <span className={styles.breadcrumbLink}>Mis eventos</span>
+        <span className={styles.breadcrumbLink} onClick={onVolver} style={{ cursor: 'pointer' }}>Mis eventos</span>
         <span className={styles.breadcrumbSep}>›</span>
         <span className={styles.breadcrumbCurrent}>Crear nuevo evento</span>
       </div>
