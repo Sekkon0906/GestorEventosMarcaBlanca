@@ -11,12 +11,13 @@ router.get('/', (req, res) => {
   });
 });
 
-// GET /eventos/:id — público
+// GET /eventos/:id — público (cuenta vistas para analytics)
 router.get('/:id', (req, res) => {
   const evento = eventos.find(e => e.id == req.params.id);
   if (!evento) {
     return res.status(404).json({ error: 'Evento no encontrado.' });
   }
+  evento.vistas = (evento.vistas || 0) + 1; // contar vista
   res.json(evento);
 });
 
@@ -120,5 +121,8 @@ router.get('/:id/asistentes', verificarToken, (req, res) => {
     asistentes: evento.asistentes
   });
 });
+
+// Funcion para compartir eventos con analytics
+router.getEventos = () => eventos;
 
 module.exports = router;
