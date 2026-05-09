@@ -1,8 +1,11 @@
-require('dotenv').config();
+require("./instrument.js"); // <-- IMPORTANTE: Debe ser la primera línea
 
+require('dotenv').config();
 const http    = require('http');
 const express = require('express');
 const cors    = require('cors');
+const Sentry  = require("@sentry/node"); // <-- Importamos Sentry
+
 const app     = express();
 const server  = http.createServer(app);
 
@@ -59,8 +62,18 @@ app.get('/', (req, res) => {
   });
 });
 
+// Ruta de prueba para Sentry (puedes borrarla después de probar)
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("¡Prueba de monitoreo de Ronald!");
+});
+
+// --- MANEJADOR DE ERRORES DE SENTRY ---
+// Debe ir después de todas las rutas y antes del server.listen
+Sentry.setupExpressErrorHandler(app);
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`\n Servidor corriendo en http://localhost:${PORT}`);
   console.log(`Endpoints disponibles en http://localhost:${PORT}/\n`);
+  console.log(`Prueba de Sentry activa en http://localhost:${PORT}/debug-sentry`);
 });
