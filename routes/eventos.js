@@ -1,15 +1,24 @@
-// eventos.js — Router principal (Juan Medina)
+// eventos.js — Router principal (Juan Medina + Andres analytics)
 const router = require('express').Router();
 
-// ── Sub-routers ────────────────────────────────────────────
-// IMPORTANTE: /categorias debe montarse antes de /:id
-// para que Express no interprete "categorias" como un :id
-const getEventos    = require('./eventos_get_lista');   // GET  /eventos + GET /eventos/categorias
-const postEvento    = require('./eventos_post');         // POST /eventos
-const getEventoById = require('./eventos_get_detalle'); // GET  /eventos/:id
+// Sub-routers de Juan Medina
+const getEventos    = require('./eventos_get_lista');
+const postEvento    = require('./eventos_post');
+const getEventoById = require('./eventos_get_detalle');
 
 router.use('/', getEventos);
 router.use('/', postEvento);
 router.use('/', getEventoById);
+
+// Funcion para compartir eventos con analytics (Andres)
+router.getEventos = () => {
+  try {
+    return require('./eventos_get_lista').getEventosData
+      ? require('./eventos_get_lista').getEventosData()
+      : [];
+  } catch {
+    return [];
+  }
+};
 
 module.exports = router;

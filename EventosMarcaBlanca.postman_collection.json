@@ -1,0 +1,143 @@
+{
+  "info": {
+    "name": "Sistema de Eventos Marca Blanca - Cristhian Ospina",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. AUTH",
+      "item": [
+        {
+          "name": "Registrar Usuario",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "http://localhost:3000/auth/register" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cristhian Ospina\",\n  \"email\": \"cristhian@test.com\",\n  \"password\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (obtener token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  console.log('Token guardado automaticamente');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "http://localhost:3000/auth/login" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cristhian@test.com\",\n  \"password\": \"123456\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. EVENTOS",
+      "item": [
+        {
+          "name": "Ver todos los eventos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/eventos" }
+          }
+        },
+        {
+          "name": "Ver evento por ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/eventos/PEGA_EL_ID_AQUI" }
+          }
+        },
+        {
+          "name": "Crear evento",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "http://localhost:3000/eventos" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tech Conference 2026\",\n  \"descripcion\": \"Evento de tecnologia e innovacion\",\n  \"fecha\": \"2026-06-15\",\n  \"lugar\": \"Auditorio Central\",\n  \"capacidad\": 200\n}"
+            }
+          }
+        },
+        {
+          "name": "Editar evento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "http://localhost:3000/eventos/PEGA_EL_ID_AQUI" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tech Conference 2026 - Actualizado\",\n  \"capacidad\": 300\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar evento",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "http://localhost:3000/eventos/PEGA_EL_ID_AQUI" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. ASISTENTES",
+      "item": [
+        {
+          "name": "Registrar asistente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "http://localhost:3000/eventos/PEGA_EL_ID_AQUI/asistentes" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan Medina\",\n  \"email\": \"juan@test.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver asistentes del evento",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "http://localhost:3000/eventos/PEGA_EL_ID_AQUI/asistentes" }
+          }
+        }
+      ]
+    }
+  ]
+}
