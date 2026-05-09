@@ -1,29 +1,26 @@
-require('dotenv').config();
+require("./instrument.js"); // <-- IMPORTANTE: Debe ser la primera línea
 
+require('dotenv').config();
 const http    = require('http');
 const express = require('express');
 const cors    = require('cors');
+const Sentry  = require("@sentry/node"); // <-- Importamos Sentry
+
 const app     = express();
 const server  = http.createServer(app);
 
 app.use(cors());
 app.use(express.json());
 
-// Rutas principales
-const eventosRouter        = require('./routes/eventos');
-const analyticsRouter      = require('./routes/analytics');
-const notificacionesRouter = require('./routes/notificaciones');
+// Rutas existentes
+app.use('/auth',    require('./routes/auth'));
+app.use('/eventos', require('./routes/eventos'));
+app.use('/usuarios', require('./routes/usuarios'));
 
-analyticsRouter.setEventos(() => eventosRouter.getEventos());
-
-app.use('/auth',              require('./routes/auth'));
-app.use('/eventos',           eventosRouter);
-app.use('/usuarios',          require('./routes/usuarios'));
-app.use('/analytics',         analyticsRouter);
-app.use('/notificaciones',    notificacionesRouter);
+// Rutas de notificaciones
 app.use('/api/notifications', require('./routes/notification.routes'));
 
-// Socket.IO condicional
+// Socket.IO condicional — activar con ENABLE_SOCKETS=true en .env
 if (process.env.ENABLE_SOCKETS === 'true') {
   try {
     const { Server } = require('socket.io');
@@ -33,17 +30,18 @@ if (process.env.ENABLE_SOCKETS === 'true') {
       console.log(`[Socket.IO] Cliente conectado: ${socket.id}`);
       socket.on('disconnect', () => console.log(`[Socket.IO] Cliente desconectado: ${socket.id}`));
     });
-    console.log('[Socket.IO] Habilitado.');
+    console.log('[Socket.IO] Habilitado — eventos en tiempo real activos.');
   } catch {
-    console.warn('[Socket.IO] No disponible.');
+    console.warn('[Socket.IO] No disponible. Instalar con: npm install socket.io');
   }
 }
 
+// Ruta raíz
 app.get('/', (req, res) => {
   res.json({
     mensaje : 'API Sistema de Eventos Marca Blanca',
-    version : '2.0.0',
-    equipo  : 'Cristhian, Juan Medina, JuanesSosa, Misael, NG, Ronald, Alejo',
+    version : '1.0.0',
+    equipo  : 'Cristhian Ospina, Juan Medina, JuanesSosa, Misael, NG, Ronald, Alejo',
     endpoints: [
       'POST /auth/register',
       'POST /auth/login',
@@ -52,22 +50,30 @@ app.get('/', (req, res) => {
       'GET  /eventos/:id',
       'GET  /eventos/categorias',
       'GET  /api/notifications',
-      'GET  /usuarios',
-      '--- ANALYTICS (Andres) ---',
-      'GET  /analytics/resumen',
-      'GET  /analytics/eventos-populares',
-      'GET  /analytics/mas-vistos',
-      '--- NOTIFICACIONES PUSH (Andres) ---',
-      'GET  /notificaciones/vapid-key',
-      'POST /notificaciones/subscribe',
-      'POST /notificaciones/enviar'
+      'PATCH /api/notifications/:id/read',
+      'GET    /usuarios                   [admin_global]',
+      'GET    /usuarios/me/permisos       [autenticado]',
+      'GET    /usuarios/:id               [admin_global]',
+      'PATCH  /usuarios/:id/rol           [admin_global]',
+      'PATCH  /usuarios/:id/permisos      [admin_global]',
+      'GET    /usuarios/:id/permisos      [admin_global]',
+      'DELETE /usuarios/:id               [admin_global]',
     ]
   });
 });
 
+// Ruta de prueba para Sentry (puedes borrarla después de probar)
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("¡Prueba de monitoreo de Ronald!");
+});
+
+// --- MANEJADOR DE ERRORES DE SENTRY ---
+// Debe ir después de todas las rutas y antes del server.listen
+Sentry.setupExpressErrorHandler(app);
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`\n Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`Analytics en http://localhost:${PORT}/analytics/resumen`);
-  console.log(`Notificaciones Push en http://localhost:${PORT}/notificaciones/vapid-key\n`);
+  console.log(`Endpoints disponibles en http://localhost:${PORT}/\n`);
+  console.log(`Prueba de Sentry activa en http://localhost:${PORT}/debug-sentry`);
 });
