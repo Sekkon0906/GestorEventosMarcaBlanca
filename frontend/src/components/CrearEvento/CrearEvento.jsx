@@ -21,7 +21,7 @@ const initialForm = {
   tags: ['tecnología', '2026'],
 }
 
-export default function CrearEvento({ onVolver }) {
+export default function CrearEvento() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
@@ -61,13 +61,13 @@ export default function CrearEvento({ onVolver }) {
         <div className={styles.logo}>SEMB</div>
         <div className={styles.navRight}>
           <div className={styles.avatar} />
-          <span className={styles.userName}>Nombre de usuario</span>
+          <span className={styles.userName}>Alejandro M.</span>
         </div>
       </nav>
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
-        <span className={styles.breadcrumbLink} onClick={onVolver} style={{ cursor: 'pointer' }}>Mis eventos</span>
+        <span className={styles.breadcrumbLink}>Mis eventos</span>
         <span className={styles.breadcrumbSep}>›</span>
         <span className={styles.breadcrumbCurrent}>Crear nuevo evento</span>
       </div>
@@ -278,7 +278,7 @@ export default function CrearEvento({ onVolver }) {
                     <path d="M3 9h18M9 21V9" strokeLinecap="round"/>
                   </svg>
                   <p>Configuración de espacios internos</p>
-                  <span>Próximamente</span>
+                  <span>Próximamente — Semana 2</span>
                 </div>
               </section>
             )}
@@ -292,7 +292,7 @@ export default function CrearEvento({ onVolver }) {
                     <path d="M12 3v18M3 12h18" strokeLinecap="round"/>
                   </svg>
                   <p>Personalización de identidad visual</p>
-                  <span>Próximamente</span>
+                  <span>Próximamente — Semana 2</span>
                 </div>
               </section>
             )}
