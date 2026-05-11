@@ -1,27 +1,77 @@
 /**
- * tests/auth.routes.test.js — JuanesSosa (QA)
- * Tests de integración para POST /auth/register y POST /auth/login
+ * tests/auth.routes.test.js
+ * Tests de integración para POST /auth/register, POST /auth/login, GET /auth/me
  *
- * Usa supertest para simular peticiones HTTP reales sin levantar el servidor.
+ * Mockea Supabase y bcryptjs para correr sin base de datos real.
  */
 
 const request = require('supertest');
 const express = require('express');
 
-// Construimos una app mínima aislada para cada suite
+// ── Mocks ──────────────────────────────────────────────────
+// La variable debe empezar con 'mock' para que babel-jest no la bloquee en el factory.
+const mockUsers = [];
+
+// Mock rápido de bcryptjs (evita el costo de 10 rondas en CI)
+jest.mock('bcryptjs', () => ({
+  hash   : jest.fn(async (pwd) => `hashed:${pwd}`),
+  compare: jest.fn(async (pwd, hash) => hash === `hashed:${pwd}`),
+}));
+
+// Mock de Supabase con almacén en memoria
+jest.mock('../db/supabase', () => {
+  const makeChain = (pendingInsert) => ({
+    select: () => {
+      if (pendingInsert !== null) {
+        // Flujo: insert().select().single()
+        return {
+          single: async () => {
+            const user = { id: Date.now(), ...pendingInsert, created_at: new Date().toISOString() };
+            mockUsers.push(user);
+            return { data: user, error: null };
+          },
+        };
+      }
+      // Flujo: select().eq().maybeSingle() | .single()
+      return {
+        eq: (field, value) => {
+          const find = () => mockUsers.find(u => String(u[field]) === String(value)) || null;
+          return {
+            maybeSingle: async () => ({ data: find(), error: null }),
+            single     : async () => {
+              const u = find();
+              return { data: u, error: u ? null : { code: 'PGRST116', message: 'not found' } };
+            },
+          };
+        },
+      };
+    },
+    insert: (data) => makeChain(data),
+  });
+
+  return { from: () => makeChain(null) };
+});
+
+// Mock del servicio de notificaciones
+jest.mock('../services/notification.service', () => ({
+  create          : jest.fn(),
+  setSocketServer : jest.fn(),
+  getAll          : jest.fn(() => []),
+}));
+
+// ── App de prueba ──────────────────────────────────────────
 const buildApp = () => {
-  jest.resetModules();
   const app = express();
   app.use(express.json());
   app.use('/auth', require('../routes/auth'));
   return app;
 };
 
-// ── POST /auth/register ───────────────────────────────────
+const app = buildApp();
 
+// ── POST /auth/register ───────────────────────────────────
 describe('POST /auth/register', () => {
-  let app;
-  beforeEach(() => { app = buildApp(); });
+  beforeEach(() => { mockUsers.length = 0; });
 
   it('registra un usuario con datos válidos (rol por defecto: asistente)', async () => {
     const res = await request(app)
@@ -58,12 +108,7 @@ describe('POST /auth/register', () => {
   it('acepta permisos granulares válidos', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({
-        nombre  : 'Carlos',
-        email   : 'carlos@test.com',
-        password: '1234',
-        permisos: ['usuarios:ver'],
-      });
+      .send({ nombre: 'Carlos', email: 'carlos@test.com', password: '1234', permisos: ['usuarios:ver'] });
 
     expect(res.status).toBe(201);
     expect(res.body.usuario.permisos).toContain('usuarios:ver');
@@ -120,12 +165,7 @@ describe('POST /auth/register', () => {
   it('retorna 400 si los permisos contienen valores inválidos', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({
-        nombre  : 'X',
-        email   : 'x@test.com',
-        password: '1234',
-        permisos: ['permiso:inexistente'],
-      });
+      .send({ nombre: 'X', email: 'x@test.com', password: '1234', permisos: ['permiso:inexistente'] });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/permisos inválidos/i);
@@ -142,13 +182,10 @@ describe('POST /auth/register', () => {
 });
 
 // ── POST /auth/login ──────────────────────────────────────
-
 describe('POST /auth/login', () => {
-  let app;
-
   beforeEach(async () => {
-    app = buildApp();
-    // Registrar usuario base antes de cada test de login
+    mockUsers.length = 0;
+    // Pre-registrar usuario base para los tests de login
     await request(app)
       .post('/auth/register')
       .send({ nombre: 'Luis', email: 'luis@test.com', password: 'pass123', rol: 'organizador' });
