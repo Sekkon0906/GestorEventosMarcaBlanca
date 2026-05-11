@@ -63,9 +63,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-bg text-text-1">
+    <div className="relative min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-bg text-text-1 overflow-hidden">
+      {/* Back button — fixed top-left */}
+      <Link
+        to="/"
+        className="fixed top-5 left-5 z-30 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-surface/70 backdrop-blur-md text-sm font-medium text-text-2 hover:text-text-1 hover:bg-surface transition-all group"
+      >
+        <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Volver
+      </Link>
+
       {/* Left hero */}
-      <aside className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden bg-gradient-to-br from-bg via-surface to-primary/20">
+      <aside className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden bg-gradient-to-br from-bg via-surface to-primary/20 animate-slide-in-right">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-primary/15 blur-[140px]" />
           <div className="absolute bottom-0 -left-20 w-[500px] h-[500px] rounded-full bg-accent/15 blur-[120px]" />
@@ -73,7 +84,7 @@ export default function RegisterPage() {
         </div>
 
         <Link to="/" className="relative flex items-center gap-2 w-fit">
-          <img src={logoUrl} alt="GESTEK" className="h-9 w-auto" />
+          <img src={logoUrl} alt="GESTEK" className="h-14 w-auto" />
         </Link>
 
         <div className="relative max-w-md">
@@ -102,10 +113,10 @@ export default function RegisterPage() {
       </aside>
 
       {/* Right form card */}
-      <main className="flex flex-col justify-center px-6 sm:px-12 py-12">
-        <div className="w-full max-w-lg mx-auto animate-[fadeUp_0.5s_ease_both]">
-          <Link to="/" className="lg:hidden inline-flex mb-6">
-            <img src={logoUrl} alt="GESTEK" className="h-8 w-auto" />
+      <main className="relative flex flex-col justify-center px-6 sm:px-12 py-12 overflow-hidden">
+        <div className="w-full max-w-lg mx-auto animate-slide-in-left">
+          <Link to="/" className="lg:hidden inline-flex mb-6 mt-8">
+            <img src={logoUrl} alt="GESTEK" className="h-12 w-auto" />
           </Link>
 
           {/* Stepper */}

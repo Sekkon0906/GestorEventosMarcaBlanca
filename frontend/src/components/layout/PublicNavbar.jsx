@@ -28,7 +28,7 @@ export default function PublicNavbar() {
   return (
     <header className="fixed top-0 inset-x-0 z-50 px-3 sm:px-6 pt-3 sm:pt-4">
       <nav
-        className={`mx-auto max-w-6xl flex items-center justify-between gap-3 rounded-full pl-5 pr-2 py-2.5
+        className={`mx-auto max-w-6xl flex items-center justify-between gap-3 rounded-full pl-5 pr-2 py-3
           transition-all duration-300 ${scrolled
             ? 'bg-surface/85 backdrop-blur-xl border border-border-2 shadow-card'
             : 'bg-surface/60 backdrop-blur-md border border-border'}`}
@@ -38,7 +38,7 @@ export default function PublicNavbar() {
           <img
             src={logoUrl}
             alt="GESTEK"
-            className="h-10 sm:h-12 w-auto transition-transform duration-500 group-hover:scale-105 animate-[logoShine_6s_ease-in-out_infinite]"
+            className="h-14 sm:h-16 w-auto transition-transform duration-500 group-hover:scale-105 animate-[logoShine_6s_ease-in-out_infinite]"
           />
         </Link>
 
@@ -50,7 +50,7 @@ export default function PublicNavbar() {
                 to={l.to}
                 end={l.to === '/'}
                 className={({ isActive }) =>
-                  `px-3.5 py-2 rounded-full text-sm font-medium transition-colors
+                  `px-4 py-2.5 rounded-full text-base font-medium transition-colors
                    ${isActive ? 'text-text-1 bg-surface-2' : 'text-text-2 hover:text-text-1 hover:bg-surface-2/60'}`
                 }
               >
@@ -62,12 +62,12 @@ export default function PublicNavbar() {
 
         {/* Right side: auth */}
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-          <Link to="/login" className="px-4 py-2 text-sm text-text-2 hover:text-text-1 transition-colors rounded-full">
+          <Link to="/login" className="px-4 py-2.5 text-base text-text-2 hover:text-text-1 transition-colors rounded-full">
             Iniciar sesión
           </Link>
           <Link
             to="/register"
-            className="px-4 py-2 text-sm font-semibold text-bg bg-text-1 hover:bg-white rounded-full transition-all shadow-[0_0_24px_rgba(241,245,249,0.15)] hover:shadow-[0_0_32px_rgba(241,245,249,0.25)]"
+            className="px-5 py-2.5 text-base font-semibold text-bg bg-text-1 hover:bg-white rounded-full transition-all shadow-[0_0_24px_rgba(241,245,249,0.15)] hover:shadow-[0_0_32px_rgba(241,245,249,0.25)]"
           >
             Registrarse
           </Link>
@@ -100,7 +100,7 @@ export default function PublicNavbar() {
                   to={l.to}
                   end={l.to === '/'}
                   className={({ isActive }) =>
-                    `block px-4 py-2.5 rounded-2xl text-sm font-medium transition-colors
+                    `block px-4 py-3 rounded-2xl text-base font-medium transition-colors
                      ${isActive ? 'text-text-1 bg-surface-2' : 'text-text-2 hover:text-text-1 hover:bg-surface-2/60'}`
                   }
                 >
@@ -111,10 +111,10 @@ export default function PublicNavbar() {
           </ul>
           <div className="border-t border-border my-3" />
           <div className="flex flex-col gap-2 px-1 pb-1">
-            <Link to="/login" className="block w-full text-center py-2.5 rounded-2xl text-sm text-text-2 hover:bg-surface-2 transition-colors">
+            <Link to="/login" className="block w-full text-center py-3 rounded-2xl text-base text-text-2 hover:bg-surface-2 transition-colors">
               Iniciar sesión
             </Link>
-            <Link to="/register" className="block w-full text-center py-2.5 rounded-2xl text-sm font-semibold text-bg bg-text-1 hover:bg-white transition-colors">
+            <Link to="/register" className="block w-full text-center py-3 rounded-2xl text-base font-semibold text-bg bg-text-1 hover:bg-white transition-colors">
               Registrarse
             </Link>
           </div>
