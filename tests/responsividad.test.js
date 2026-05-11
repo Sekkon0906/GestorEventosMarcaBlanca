@@ -1,29 +1,70 @@
 /**
- * tests/responsividad.test.js — JuanesSosa (QA)
- * Pruebas de responsividad mobile — breakpoints y usabilidad
+ * tests/responsividad.test.js
+ * Pruebas de responsividad mobile — headers, payload, tiempos y estructura.
  *
  * Verifica que la API devuelva los headers correctos para clientes mobile
- * y que las respuestas sean adecuadas para consumo desde apps móviles:
- *   - Tamaño de respuesta razonable (no payloads gigantes en mobile)
- *   - Headers CORS correctos para apps nativas
- *   - Content-Type application/json en todos los endpoints
- *   - Respuestas paginables (campos total, limite, pagina)
- *   - Endpoints críticos responden en tiempo razonable
+ * y que las respuestas sean adecuadas para consumo desde apps móviles.
  */
 
 const request = require('supertest');
 const express = require('express');
 const cors    = require('cors');
 
-// ── App mínima con CORS (igual que index.js) ──────────────
+// ── Mocks ──────────────────────────────────────────────────
+const mockUsers = [];
+
+jest.mock('bcryptjs', () => ({
+  hash   : jest.fn(async (pwd) => `hashed:${pwd}`),
+  compare: jest.fn(async (pwd, hash) => hash === `hashed:${pwd}`),
+}));
+
+jest.mock('../db/supabase', () => {
+  const makeChain = (pendingInsert) => ({
+    select: () => {
+      if (pendingInsert !== null) {
+        return {
+          single: async () => {
+            const user = { id: Date.now(), ...pendingInsert, created_at: new Date().toISOString() };
+            mockUsers.push(user);
+            return { data: user, error: null };
+          },
+        };
+      }
+      return {
+        eq: (field, value) => {
+          const find = () => mockUsers.find(u => String(u[field]) === String(value)) || null;
+          return {
+            maybeSingle: async () => ({ data: find(), error: null }),
+            single     : async () => {
+              const u = find();
+              return { data: u, error: u ? null : { code: 'PGRST116', message: 'not found' } };
+            },
+          };
+        },
+      };
+    },
+    insert: (data) => makeChain(data),
+  });
+
+  return { from: () => makeChain(null) };
+});
+
+jest.mock('../services/notification.service', () => ({
+  create         : jest.fn(),
+  setSocketServer: jest.fn(),
+  getAll         : jest.fn(() => []),
+}));
+
+// ── App de prueba ──────────────────────────────────────────
 const buildApp = () => {
-  jest.resetModules();
   const app = express();
   app.use(cors());
   app.use(express.json());
-  app.use('/auth',    require('../routes/auth'));
+  app.use('/auth', require('../routes/auth'));
   return app;
 };
+
+const app = buildApp();
 
 // Breakpoints de referencia (ancho en px)
 const BREAKPOINTS = {
@@ -35,10 +76,8 @@ const BREAKPOINTS = {
 };
 
 // ── Content-Type ──────────────────────────────────────────
-
 describe('Content-Type — todos los endpoints retornan JSON', () => {
-  let app;
-  beforeEach(() => { app = buildApp(); });
+  beforeEach(() => { mockUsers.length = 0; });
 
   it('POST /auth/register retorna application/json', async () => {
     const res = await request(app)
@@ -49,40 +88,27 @@ describe('Content-Type — todos los endpoints retornan JSON', () => {
   });
 
   it('POST /auth/login retorna application/json', async () => {
-    await request(app)
-      .post('/auth/register')
-      .send({ nombre: 'Test', email: 'login@test.com', password: '1234' });
-
-    const res = await request(app)
-      .post('/auth/login')
-      .send({ email: 'login@test.com', password: '1234' });
-
+    await request(app).post('/auth/register').send({ nombre: 'Test', email: 'login@test.com', password: '1234' });
+    const res = await request(app).post('/auth/login').send({ email: 'login@test.com', password: '1234' });
     expect(res.headers['content-type']).toMatch(/application\/json/);
   });
 
   it('respuestas de error también retornan application/json', async () => {
-    const res = await request(app)
-      .post('/auth/login')
-      .send({ email: 'noexiste@test.com', password: 'mal' });
-
+    const res = await request(app).post('/auth/login').send({ email: 'noexiste@test.com', password: 'mal' });
     expect(res.headers['content-type']).toMatch(/application\/json/);
     expect(res.status).toBe(401);
   });
 });
 
-// ── CORS — acceso desde apps mobile/web ──────────────────
-
+// ── CORS ──────────────────────────────────────────────────
 describe('CORS — headers para clientes mobile y web', () => {
-  let app;
-  beforeEach(() => { app = buildApp(); });
+  beforeEach(() => { mockUsers.length = 0; });
 
   it('responde a preflight OPTIONS con headers CORS', async () => {
     const res = await request(app)
       .options('/auth/register')
       .set('Origin', 'http://localhost:3001')
       .set('Access-Control-Request-Method', 'POST');
-
-    // CORS habilitado: debe incluir el header
     expect(res.headers['access-control-allow-origin']).toBeDefined();
   });
 
@@ -91,92 +117,63 @@ describe('CORS — headers para clientes mobile y web', () => {
       .post('/auth/register')
       .set('Origin', 'http://mi-app-mobile.com')
       .send({ nombre: 'CORS', email: 'cors@test.com', password: '1234' });
-
     expect(res.headers['access-control-allow-origin']).toBeDefined();
   });
 });
 
-// ── Tamaño de payload — adecuado para mobile ─────────────
-
+// ── Payload ───────────────────────────────────────────────
 describe('Payload — tamaño adecuado para conexiones mobile', () => {
-  let app;
-  beforeEach(() => { app = buildApp(); });
+  beforeEach(() => { mockUsers.length = 0; });
 
   it('respuesta de register pesa menos de 1KB', async () => {
     const res = await request(app)
       .post('/auth/register')
       .send({ nombre: 'Payload', email: 'payload@test.com', password: '1234' });
-
     const bytes = Buffer.byteLength(JSON.stringify(res.body), 'utf8');
-    expect(bytes).toBeLessThan(1024); // < 1KB
+    expect(bytes).toBeLessThan(1024);
   });
 
   it('respuesta de login pesa menos de 2KB (incluye JWT)', async () => {
-    await request(app)
-      .post('/auth/register')
-      .send({ nombre: 'JWT', email: 'jwt@test.com', password: '1234' });
-
-    const res = await request(app)
-      .post('/auth/login')
-      .send({ email: 'jwt@test.com', password: '1234' });
-
+    await request(app).post('/auth/register').send({ nombre: 'JWT', email: 'jwt@test.com', password: '1234' });
+    const res = await request(app).post('/auth/login').send({ email: 'jwt@test.com', password: '1234' });
     const bytes = Buffer.byteLength(JSON.stringify(res.body), 'utf8');
-    expect(bytes).toBeLessThan(2048); // < 2KB
+    expect(bytes).toBeLessThan(2048);
   });
 
   it('respuesta de error pesa menos de 512 bytes', async () => {
-    const res = await request(app)
-      .post('/auth/login')
-      .send({ email: 'noexiste@test.com', password: 'mal' });
-
+    const res = await request(app).post('/auth/login').send({ email: 'noexiste@test.com', password: 'mal' });
     const bytes = Buffer.byteLength(JSON.stringify(res.body), 'utf8');
     expect(bytes).toBeLessThan(512);
   });
 });
 
-// ── Tiempos de respuesta — usabilidad mobile ─────────────
-
+// ── Tiempos ───────────────────────────────────────────────
 describe('Tiempo de respuesta — usabilidad en mobile', () => {
-  let app;
-  beforeEach(() => { app = buildApp(); });
+  beforeEach(() => { mockUsers.length = 0; });
 
   it('POST /auth/register responde en menos de 300ms', async () => {
     const inicio = Date.now();
-    await request(app)
-      .post('/auth/register')
-      .send({ nombre: 'Speed', email: 'speed@test.com', password: '1234' });
-    const ms = Date.now() - inicio;
-
-    expect(ms).toBeLessThan(300);
+    await request(app).post('/auth/register').send({ nombre: 'Speed', email: 'speed@test.com', password: '1234' });
+    expect(Date.now() - inicio).toBeLessThan(300);
   });
 
   it('POST /auth/login responde en menos de 300ms', async () => {
-    await request(app)
-      .post('/auth/register')
-      .send({ nombre: 'Speed2', email: 'speed2@test.com', password: '1234' });
-
+    await request(app).post('/auth/register').send({ nombre: 'Speed2', email: 'speed2@test.com', password: '1234' });
     const inicio = Date.now();
-    await request(app)
-      .post('/auth/login')
-      .send({ email: 'speed2@test.com', password: '1234' });
-    const ms = Date.now() - inicio;
-
-    expect(ms).toBeLessThan(300);
+    await request(app).post('/auth/login').send({ email: 'speed2@test.com', password: '1234' });
+    expect(Date.now() - inicio).toBeLessThan(300);
   });
 });
 
-// ── Estructura de respuesta — consumo mobile ─────────────
-
+// ── Estructura ────────────────────────────────────────────
 describe('Estructura de respuesta — apta para apps mobile', () => {
-  let app;
-  beforeEach(() => { app = buildApp(); });
+  beforeEach(() => { mockUsers.length = 0; });
 
   it('register retorna campos esenciales para mostrar en UI mobile', async () => {
     const res = await request(app)
       .post('/auth/register')
       .send({ nombre: 'UI', email: 'ui@test.com', password: '1234' });
 
-    // La app mobile necesita: mensaje de éxito + datos del usuario
     expect(res.body).toHaveProperty('mensaje');
     expect(res.body).toHaveProperty('usuario');
     expect(res.body.usuario).toHaveProperty('id');
@@ -186,26 +183,17 @@ describe('Estructura de respuesta — apta para apps mobile', () => {
   });
 
   it('login retorna token + usuario para almacenar en app mobile', async () => {
-    await request(app)
-      .post('/auth/register')
-      .send({ nombre: 'App', email: 'app@test.com', password: '1234' });
+    await request(app).post('/auth/register').send({ nombre: 'App', email: 'app@test.com', password: '1234' });
+    const res = await request(app).post('/auth/login').send({ email: 'app@test.com', password: '1234' });
 
-    const res = await request(app)
-      .post('/auth/login')
-      .send({ email: 'app@test.com', password: '1234' });
-
-    // La app mobile necesita guardar: token (auth) + datos del usuario (UI)
     expect(res.body).toHaveProperty('token');
     expect(res.body).toHaveProperty('usuario');
     expect(res.body.usuario).toHaveProperty('rol');
-    expect(res.body.usuario).not.toHaveProperty('password'); // nunca exponer
+    expect(res.body.usuario).not.toHaveProperty('password');
   });
 
   it('errores retornan campo "error" con mensaje legible para el usuario', async () => {
-    const res = await request(app)
-      .post('/auth/register')
-      .send({ email: 'incompleto@test.com' }); // sin nombre ni password
-
+    const res = await request(app).post('/auth/register').send({ email: 'incompleto@test.com' });
     expect(res.body).toHaveProperty('error');
     expect(typeof res.body.error).toBe('string');
     expect(res.body.error.length).toBeGreaterThan(0);
@@ -221,13 +209,12 @@ describe('Estructura de respuesta — apta para apps mobile', () => {
   });
 });
 
-// ── Breakpoints — documentación de referencia ─────────────
-
+// ── Breakpoints ───────────────────────────────────────────
 describe('Breakpoints mobile de referencia', () => {
   it('los breakpoints del sistema están definidos correctamente', () => {
     expect(BREAKPOINTS.mobile_xs).toBe(320);
-    expect(BREAKPOINTS.mobile_sm).toBe(375);  // iPhone SE / iPhone 12 mini
-    expect(BREAKPOINTS.mobile_md).toBe(414);  // iPhone Plus / Pro Max
+    expect(BREAKPOINTS.mobile_sm).toBe(375);
+    expect(BREAKPOINTS.mobile_md).toBe(414);
     expect(BREAKPOINTS.tablet).toBe(768);
     expect(BREAKPOINTS.desktop).toBe(1024);
   });
