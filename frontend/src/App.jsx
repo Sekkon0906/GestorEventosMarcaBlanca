@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import AppLayout from './components/layout/AppLayout.jsx';
+import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -25,11 +26,15 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Landing pública — siempre accesible */}
+          <Route path="/" element={<LandingPage />} />
+
+          {/* Auth — redirige al dashboard si ya hay sesión */}
           <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
+          {/* App privada */}
           <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard"        element={<DashboardPage />} />
             <Route path="/eventos"          element={<EventsListPage />} />
             <Route path="/eventos/nuevo"    element={<EventCreatePage />} />
@@ -38,7 +43,7 @@ export default function App() {
             <Route path="/configuracion"    element={<SettingsPage />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
