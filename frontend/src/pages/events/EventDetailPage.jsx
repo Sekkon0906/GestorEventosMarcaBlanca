@@ -184,7 +184,7 @@ export default function EventDetailPage() {
           {!esDueno && evento.estado === 'publicado' && (
             <div className="mt-5 pt-5 border-t border-border">
               <button onClick={() => doAction('inscribirse')} disabled={working} className="btn-gradient">
-                {working ? <Spinner size="sm" /> : '✓ Inscribirme a este evento'}
+                {working ? <Spinner size="sm" /> : 'Inscribirme a este evento'}
               </button>
             </div>
           )}

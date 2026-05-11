@@ -447,7 +447,7 @@ function Features() {
               <ChatBubble from="user" text="Crea un evento de tecnología para el 15 de agosto en Bogotá, capacidad 200 personas, entrada gratuita" />
               <ChatBubble from="ai" text="¡Perfecto! Creé el evento 'Tech Summit Bogotá' para el 15 de agosto. Ya configuré capacidad de 200 personas con entrada gratuita. ¿Lo publico ahora o prefieres añadir speakers primero?" delay={400} />
               <ChatBubble from="user" text="Añade a Maria García como speaker, CEO de TechCo" delay={800} />
-              <ChatBubble from="ai" text="Agregado. María García (CEO · TechCo) aparece como speaker principal. El evento está listo para publicar 🚀" delay={1200} />
+              <ChatBubble from="ai" text="Agregado. María García (CEO · TechCo) aparece como speaker principal. El evento está listo para publicar." delay={1200} />
               <div className="flex items-center gap-2 mt-4">
                 <input className="flex-1 input text-xs py-2" placeholder="Escribe algo al asistente..." disabled />
                 <button className="btn-gradient btn-sm px-3" disabled>
@@ -478,7 +478,7 @@ function ChatBubble({ from, text, delay = 0 }) {
           ? 'bg-primary text-white rounded-tr-sm'
           : 'bg-surface-3 text-text-1 rounded-tl-sm border border-border'
       }`}>
-        {from === 'ai' && <span className="text-accent-light font-semibold text-[10px] block mb-1">✦ IA</span>}
+        {from === 'ai' && <span className="text-accent-light font-semibold text-[10px] block mb-1">IA</span>}
         {text}
       </div>
     </div>

@@ -89,6 +89,6 @@ app.use((req, res) => res.status(404).json({ error: `Ruta no encontrada: ${req.m
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`\n🚀 GESTEK API corriendo en http://localhost:${PORT}`);
-  console.log(`📋 Endpoints en http://localhost:${PORT}/\n`);
+  console.log(`\nGESTEK API corriendo en http://localhost:${PORT}`);
+  console.log(`Endpoints en http://localhost:${PORT}/\n`);
 });
