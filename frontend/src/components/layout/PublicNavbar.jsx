@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import logoUrl from '../../assets/logo-gestek.svg';
+import logoG from '../../assets/logo-g.svg';
 
 const NAV_LINKS = [
   { to: '/',              label: 'Inicio'        },
@@ -14,6 +14,7 @@ const NAV_LINKS = [
 export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [spinKey, setSpinKey] = useState(0);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -25,21 +26,34 @@ export default function PublicNavbar() {
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
+  const spinG = (e) => { e?.stopPropagation(); setSpinKey(k => k + 1); };
+
   return (
     <header className="fixed top-0 inset-x-0 z-50 px-3 sm:px-6 pt-3 sm:pt-4">
       <nav
-        className={`mx-auto max-w-6xl flex items-center justify-between gap-3 rounded-full pl-5 pr-2 py-3
+        className={`mx-auto max-w-6xl flex items-center justify-between gap-3 rounded-full pl-3 pr-2 py-2.5
           transition-all duration-300 ${scrolled
             ? 'bg-surface/85 backdrop-blur-xl border border-border-2 shadow-card'
             : 'bg-surface/60 backdrop-blur-md border border-border'}`}
       >
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-          <img
-            src={logoUrl}
-            alt="GESTEK"
-            className="h-14 sm:h-16 w-auto transition-transform duration-500 group-hover:scale-105 animate-[logoShine_6s_ease-in-out_infinite]"
-          />
+        {/* Logo G */}
+        <Link
+          to="/"
+          onClick={spinG}
+          className="flex items-center gap-2 group flex-shrink-0"
+          aria-label="Inicio"
+        >
+          <span
+            key={spinKey}
+            className="inline-flex items-center justify-center animate-wheel-spin"
+            style={{ transformStyle: 'preserve-3d' }}
+          >
+            <img
+              src={logoG}
+              alt="GESTEK"
+              className="h-12 sm:h-14 w-12 sm:w-14 transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_0_18px_rgba(59,130,246,0.45)]"
+            />
+          </span>
         </Link>
 
         {/* Desktop nav links */}

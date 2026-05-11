@@ -69,14 +69,27 @@ export default function LandingHomePage() {
       />
       <FeatureSplit
         side="left"
-        kicker="API + Webhooks · Gratis"
-        title="Conecta GESTEK con todo tu stack"
-        desc="API REST documentada con API key y webhooks que disparan en cada inscripción, pago o check-in. Útil si ya tienes CRM, ERP o flujos en Zapier / n8n."
+        kicker="Equipo y comunicación · Gratis"
+        title="Trabaja en equipo y mantén a todos al tanto"
+        desc="Invita a tu equipo con roles granulares y deja que cada quien se encargue de lo suyo. Las notificaciones automáticas mantienen informados a asistentes y organizadores."
         bullets={[
-          'API key por organización',
+          'Multi-usuario con roles granulares (admin, editor, lector)',
+          'Notificaciones de eventos por email y dentro de la app',
+          'Subpaths personalizadas (gestek.io/tu-empresa)',
+          'Recordatorios automáticos pre-evento (T-7d, T-1d, T-1h)',
+        ]}
+        visual={<TeamMockup />}
+      />
+      <FeatureSplit
+        side="right"
+        kicker="API + Webhooks · Plan Pro"
+        title="Conecta GESTEK con todo tu stack"
+        desc="Plan Pro incluye API REST documentada con API key y webhooks que disparan en cada inscripción, pago o check-in. Para cuando ya tienes CRM, ERP o flujos automatizados."
+        bullets={[
+          'API key por organización con HMAC',
           'Webhooks: registro, pago, check-in, cancelación',
-          'OpenAPI / Postman incluidos',
-          'Rate limits razonables y CORS configurado',
+          'OpenAPI / Postman + reintentos automáticos',
+          'Rate limit 600 req/min',
         ]}
         visual={<CodeMockup />}
       />
@@ -99,26 +112,31 @@ function Hero() {
         <div className="absolute top-1/4 right-10 w-[300px] h-[300px] bg-primary/8 blur-[120px] rounded-full animate-[glowPulse_7s_ease-in-out_infinite_1s]" />
       </div>
 
-      <div className="relative max-w-5xl mx-auto text-center" ref={ref}>
-        <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border-2 bg-surface/60 backdrop-blur text-xs font-medium text-text-2 mb-10 tracking-wide transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-success animate-[pulseSoft_2s_ease-in-out_infinite]" />
-          Plataforma todo-en-uno para eventos
-        </span>
+      {/* Decorative orbits */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <div className="absolute w-[600px] h-[600px] rounded-full border border-border/40 animate-[spin-slow_60s_linear_infinite]" />
+        <div className="absolute w-[800px] h-[800px] rounded-full border border-border/25 animate-[spin-slow_90s_linear_infinite_reverse]" />
+        <div className="absolute w-[1000px] h-[1000px] rounded-full border border-border/15" />
+      </div>
 
-        <h1 className={`text-6xl sm:text-7xl lg:text-[5.5rem] font-bold font-display tracking-tight leading-[1.02] text-text-1 transition-all duration-700 delay-100 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          Gestión de eventos,
-          <br />
-          <span className="bg-gradient-to-br from-primary-light via-accent-light to-primary bg-clip-text text-transparent animate-[shimmer_8s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}>
-            simplificada
+      <div className="relative max-w-5xl mx-auto text-center" ref={ref}>
+        <h1 className={`text-7xl sm:text-8xl lg:text-[8.5rem] font-bold font-display tracking-tight leading-none text-text-1 transition-all duration-700 delay-100 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <span className="bg-gradient-to-br from-text-1 via-primary-light to-accent-light bg-clip-text text-transparent animate-[shimmer_8s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}>
+            GESTEK
           </span>
         </h1>
 
-        <p className={`mt-8 text-lg sm:text-xl text-text-2 max-w-2xl mx-auto leading-relaxed transition-all duration-700 delay-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          GESTEK reúne creación, ventas, asistencia, pagos y analítica de tus eventos en
-          un solo lugar. Todo lo esencial gratis para siempre.
+        <p className={`mt-4 text-base sm:text-lg text-primary-light font-semibold tracking-[0.3em] uppercase transition-all duration-700 delay-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          Manage · Automate · Scale
         </p>
 
-        <div className={`mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 transition-all duration-700 delay-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <p className={`mt-8 text-lg sm:text-2xl text-text-2 max-w-3xl mx-auto leading-relaxed transition-all duration-700 delay-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          La plataforma de gestión de eventos que reemplaza tu stack actual.
+          Creación, ventas, asistencia, pagos y comunidad — todo lo esencial
+          gratis, para siempre.
+        </p>
+
+        <div className={`mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 transition-all duration-700 delay-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <Link
             to="/register"
             className="w-full sm:w-auto px-8 py-4 rounded-full text-base font-semibold text-bg bg-text-1 hover:bg-white transition-all shadow-[0_0_40px_rgba(241,245,249,0.2)] hover:shadow-[0_0_60px_rgba(241,245,249,0.35)] hover:scale-[1.02] active:scale-[0.98]"
@@ -133,7 +151,7 @@ function Hero() {
           </Link>
         </div>
 
-        <p className={`mt-6 text-sm text-text-3 transition-all duration-700 delay-500 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+        <p className={`mt-6 text-sm text-text-3 transition-all duration-700 delay-700 ${visible ? 'opacity-100' : 'opacity-0'}`}>
           Sin tarjeta de crédito · Todo lo principal incluido en el plan gratis
         </p>
       </div>
@@ -175,23 +193,54 @@ function Marquee() {
   );
 }
 
-/* ─────────── STATS ─────────── */
+/* ─────────── VALUE PROPS ─────────── */
 function Stats() {
-  const stats = [
-    { n: 2400, suffix: '+', label: 'Eventos creados' },
-    { n: 840,  suffix: '+', label: 'Organizadores activos' },
-    { n: 18,   suffix: 'k', label: 'Asistentes totales' },
-    { n: 99,   suffix: '%', label: 'Uptime últimos 30 días' },
+  const props = [
+    {
+      kicker: 'Velocidad',
+      title: 'Eventos grandes',
+      highlight: '< 15 min',
+      desc: 'Wizard de 4 pasos. Sin curva de aprendizaje, sin onboarding obligatorio.',
+    },
+    {
+      kicker: 'Cero comisiones',
+      title: 'Cobra boletas',
+      highlight: 'directo a ti',
+      desc: 'Pasarela BRE-B con tu llave o QR. El dinero entra a tu cuenta, no a la nuestra.',
+    },
+    {
+      kicker: 'Sin trucos',
+      title: 'Plan gratis',
+      highlight: 'para siempre',
+      desc: 'Todo lo esencial incluido. Sin caducidad, sin tarjeta, sin asteriscos.',
+    },
+    {
+      kicker: 'Escala',
+      title: 'API y agente IA',
+      highlight: 'cuando los necesites',
+      desc: 'Si tu volumen crece, Pro suma agente IA, white-label y API. No antes.',
+    },
   ];
   return (
-    <section className="px-5 sm:px-8 py-20">
-      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-        {stats.map(s => (
-          <div key={s.label} className="text-center p-6 rounded-3xl border border-border bg-surface/30 hover:bg-surface/50 hover:border-border-2 transition-all">
-            <p className="text-4xl sm:text-5xl font-bold font-display bg-gradient-to-br from-text-1 to-text-2 bg-clip-text text-transparent mb-2">
-              <CountUp to={s.n} suffix={s.suffix} />
+    <section className="relative px-5 sm:px-8 py-20 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/4 w-[300px] h-[300px] bg-primary/6 blur-[120px] rounded-full" />
+        <div className="absolute top-1/2 right-1/4 w-[300px] h-[300px] bg-accent/6 blur-[120px] rounded-full" />
+      </div>
+      <div className="relative max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {props.map((p, i) => (
+          <div
+            key={p.title}
+            className="group relative p-6 rounded-3xl border border-border bg-surface/40 hover:bg-surface/70 hover:border-border-2 hover:-translate-y-1 transition-all overflow-hidden"
+            style={{ animationDelay: `${i * 100}ms` }}
+          >
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/8 rounded-full blur-2xl group-hover:bg-primary/15 transition-colors" />
+            <p className="relative text-[10px] uppercase tracking-widest text-primary-light font-bold mb-4">{p.kicker}</p>
+            <h3 className="relative text-xl font-bold font-display text-text-1 leading-tight mb-1">{p.title}</h3>
+            <p className="relative text-2xl font-bold font-display bg-gradient-to-br from-primary-light to-accent-light bg-clip-text text-transparent mb-3">
+              {p.highlight}
             </p>
-            <p className="text-sm text-text-2">{s.label}</p>
+            <p className="relative text-sm text-text-2 leading-relaxed">{p.desc}</p>
           </div>
         ))}
       </div>
@@ -343,6 +392,42 @@ function PayMockup() {
   );
 }
 
+function TeamMockup() {
+  const team = [
+    { name: 'Juan Medina',    role: 'Admin',  color: 'from-primary to-accent' },
+    { name: 'Laura Sánchez',  role: 'Editor', color: 'from-accent to-success' },
+    { name: 'Diego Restrepo', role: 'Editor', color: 'from-success to-primary' },
+    { name: 'María Torres',   role: 'Lector', color: 'from-primary-light to-accent-light' },
+  ];
+  return (
+    <div className="rounded-3xl border border-border-2 bg-surface/60 backdrop-blur p-7">
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-xs uppercase tracking-widest text-text-3">Equipo del evento</span>
+        <span className="px-3 py-1 rounded-full bg-success/15 border border-success/30 text-success text-xs font-semibold">4 activos</span>
+      </div>
+      <div className="space-y-3">
+        {team.map(m => (
+          <div key={m.name} className="flex items-center gap-3 p-3 rounded-2xl bg-bg/40 border border-border hover:bg-bg/60 transition-colors">
+            <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${m.color} flex items-center justify-center text-bg font-bold text-sm`}>
+              {m.name[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-1 truncate">{m.name}</p>
+              <p className="text-xs text-text-3">{m.role}</p>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest text-primary-light font-semibold">
+              {m.role === 'Admin' ? 'Total' : m.role === 'Editor' ? 'Edita' : 'Lee'}
+            </span>
+          </div>
+        ))}
+      </div>
+      <button className="mt-4 w-full py-2.5 rounded-2xl text-xs font-semibold text-text-2 border border-dashed border-border-2 hover:border-text-3 hover:text-text-1 transition-colors">
+        + Invitar miembro
+      </button>
+    </div>
+  );
+}
+
 function CodeMockup() {
   return (
     <div className="rounded-3xl border border-border-2 bg-bg/80 backdrop-blur overflow-hidden">
@@ -439,10 +524,18 @@ function PricingTeaser() {
         <div className="grid md:grid-cols-2 gap-5">
           <div className="p-7 rounded-3xl border border-border bg-surface/40 hover:bg-surface/60 transition-all">
             <h3 className="text-2xl font-bold font-display text-text-1 mb-2">Free</h3>
-            <p className="text-sm text-text-2 mb-5">Todo lo principal, sin tarjeta de crédito.</p>
+            <p className="text-sm text-text-2 mb-5">Todo lo esencial, sin tarjeta de crédito.</p>
             <p className="text-4xl font-bold font-display text-text-1 mb-6">Gratis</p>
             <ul className="space-y-2.5 text-sm text-text-1 mb-7">
-              {['Eventos ilimitados', 'QR + check-in', 'Recordatorios email', 'Gamificación', 'Pagos BRE-B', 'API + Webhooks'].map(f => (
+              {[
+                'Eventos y asistentes ilimitados',
+                'QR de check-in / check-out',
+                'Recordatorios email + notificaciones',
+                'Gamificación completa',
+                'Pasarela BRE-B sin comisiones',
+                'Multi-usuario con roles granulares',
+                'Subpath en gestek.io/tu-marca',
+              ].map(f => (
                 <li key={f} className="flex items-start gap-2"><span className="text-primary-light mt-0.5">✓</span> {f}</li>
               ))}
             </ul>
@@ -454,10 +547,18 @@ function PricingTeaser() {
           <div className="relative p-7 rounded-3xl border border-primary/40 bg-surface/80 shadow-[0_0_60px_rgba(59,130,246,0.12)] hover:shadow-[0_0_80px_rgba(59,130,246,0.2)] transition-all">
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-semibold tracking-widest uppercase bg-primary text-white">Recomendado</span>
             <h3 className="text-2xl font-bold font-display text-text-1 mb-2">Pro</h3>
-            <p className="text-sm text-text-2 mb-5">Comodidad, branding y agente IA.</p>
+            <p className="text-sm text-text-2 mb-5">API, IA, branding y dominio propio.</p>
             <p className="text-4xl font-bold font-display text-text-1 mb-6">$29 <span className="text-base text-text-3 font-medium">USD/mes</span></p>
             <ul className="space-y-2.5 text-sm text-text-1 mb-7">
-              {['Todo lo del Free', 'Agente IA', 'Personalización marca', 'White-label sin GESTEK', 'Analytics avanzados', 'Soporte prioritario'].map(f => (
+              {[
+                'Todo lo del Free',
+                'API REST + Webhooks con HMAC',
+                'Agente IA que arma tus eventos',
+                'White-label sin marca GESTEK',
+                'Dominio personalizado propio',
+                'Analytics avanzados',
+                'Soporte prioritario',
+              ].map(f => (
                 <li key={f} className="flex items-start gap-2"><span className="text-primary-light mt-0.5">✓</span> {f}</li>
               ))}
             </ul>

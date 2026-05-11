@@ -13,8 +13,7 @@ import EventoPublicoPage  from './pages/public/EventoPublicoPage.jsx';
 import PlanesPage         from './pages/public/PlanesPage.jsx';
 import FAQPage            from './pages/public/FAQPage.jsx';
 
-import LoginPage          from './pages/LoginPage.jsx';
-import RegisterPage       from './pages/RegisterPage.jsx';
+import AuthPage           from './pages/AuthPage.jsx';
 import DashboardPage      from './pages/DashboardPage.jsx';
 import EventsListPage     from './pages/events/EventsListPage.jsx';
 import EventCreatePage    from './pages/events/EventCreatePage.jsx';
@@ -49,10 +48,10 @@ export default function App() {
               <Route path="/faq"               element={<FAQPage />} />
             </Route>
 
-            {/* Auth pages (no public layout) */}
-            <Route path="/login"    element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+            {/* Auth pages (unified with panel-swap animation) */}
+            <Route path="/login"    element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+            <Route path="/register" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
             <Route path="/acceder"  element={<Navigate to="/login" replace />} />
-            <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 
             {/* App protegida */}
             <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
