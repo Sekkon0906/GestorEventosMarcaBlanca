@@ -4,6 +4,7 @@ import AppLayout from './components/layout/AppLayout.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import PlanesPage from './pages/PlanesPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import EventsListPage from './pages/events/EventsListPage.jsx';
 import EventCreatePage from './pages/events/EventCreatePage.jsx';
@@ -26,8 +27,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Landing pública — siempre accesible */}
+          {/* Páginas públicas — siempre accesibles */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/planes" element={<PlanesPage />} />
 
           {/* Auth — redirige al dashboard si ya hay sesión */}
           <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />

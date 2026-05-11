@@ -1,44 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { Link, useLocation } from 'react-router-dom';
+import LandingNavbar from '../components/layout/LandingNavbar.jsx';
+import LandingFooter from '../components/layout/LandingFooter.jsx';
 import GestekLogo from '../components/brand/GestekLogo.jsx';
 
 // ════════════════════════════════════════════════════════════
-//  Datos de la landing
+//  Datos
 // ════════════════════════════════════════════════════════════
-const NAV_LINKS = [
-  { id: 'home',      label: 'Inicio' },
-  { id: 'funciones', label: 'Funciones' },
-  { id: 'eventos',   label: 'Eventos' },
-  { id: 'gamificacion', label: 'Gamificación' },
-  { id: 'planes',    label: 'Planes' },
-  { id: 'faq',       label: 'FAQ' },
-];
-
 const FEATURES = [
   {
     color: 'from-blue-500 to-cyan-400',
     title: 'Crea eventos en minutos',
     desc: 'Presenciales, virtuales o híbridos. Agenda, speakers, patrocinadores, tickets y códigos de descuento en un solo flujo.',
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-    ),
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />,
   },
   {
     color: 'from-purple-500 to-pink-400',
     title: 'Inscripciones inteligentes',
     desc: 'Gestiona asistentes con aprobación manual, listas de espera y tickets personalizados (general, VIP, early bird).',
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-    ),
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />,
   },
   {
     color: 'from-emerald-500 to-teal-400',
     title: 'Analytics en tiempo real',
     desc: 'Asistentes confirmados, vistas, conversión y ocupación. Métricas que se actualizan al instante.',
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-    ),
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />,
   },
   {
     color: 'from-amber-500 to-orange-400',
@@ -55,23 +41,19 @@ const FEATURES = [
     color: 'from-rose-500 to-red-400',
     title: 'Notificaciones push',
     desc: 'Alerta a tus asistentes en tiempo real con notificaciones del navegador y email.',
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-    ),
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />,
   },
   {
     color: 'from-indigo-500 to-violet-400',
     title: '100% white-label',
     desc: 'Tu marca, tu dominio, tu estética. GESTEK se adapta a tu identidad corporativa.',
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-    ),
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />,
   },
 ];
 
 const EVENT_TYPES = [
   { emoji: '🎤', label: 'Conferencias', desc: 'Charlas magistrales y paneles de expertos.' },
-  { emoji: '💼', label: 'Eventos corporativos', desc: 'Lanzamientos, capacitaciones, kick-offs.' },
+  { emoji: '💼', label: 'Corporativos', desc: 'Lanzamientos, capacitaciones, kick-offs.' },
   { emoji: '🎓', label: 'Educación', desc: 'Talleres, cursos y webinars.' },
   { emoji: '🎵', label: 'Conciertos', desc: 'Música en vivo y festivales.' },
   { emoji: '🏆', label: 'Deportivos', desc: 'Torneos, carreras y competencias.' },
@@ -85,49 +67,6 @@ const GAMIFICATION = [
   { icon: '🏅', title: 'Insignias y logros', desc: 'Desbloquea badges al cumplir hitos. Coleccionables únicos por evento.' },
   { icon: '📊', title: 'Leaderboard en vivo', desc: 'Ranking público de los asistentes más activos durante el evento.' },
   { icon: '🎁', title: 'Premios canjeables', desc: 'Convierte los puntos en merchandising, descuentos y experiencias VIP.' },
-];
-
-const PLANS = [
-  {
-    name: 'Gratis',
-    price: '$0',
-    period: '/ siempre',
-    tagline: 'Para empezar a probar la plataforma',
-    color: 'border-border',
-    badge: null,
-    features: [
-      'Hasta 3 eventos activos',
-      'Hasta 100 asistentes por evento',
-      'Gestión básica de inscripciones',
-      'Tickets gratuitos ilimitados',
-      'Analytics básicos',
-      'Soporte por email',
-    ],
-    cta: 'Crear cuenta gratis',
-    ctaLink: '/register',
-    highlight: false,
-  },
-  {
-    name: 'Premium',
-    price: '$29',
-    period: '/ mes',
-    tagline: 'Para profesionales y empresas en crecimiento',
-    color: 'border-primary',
-    badge: 'Más popular',
-    features: [
-      'Eventos y asistentes ilimitados',
-      'Tickets pagos + códigos de descuento',
-      'Gamificación completa con leaderboard',
-      'Analytics avanzados en tiempo real',
-      'White-label total (tu marca y dominio)',
-      'Notificaciones push y email',
-      'API completa + webhooks',
-      'Soporte prioritario 24/7',
-    ],
-    cta: 'Comprar desde el panel',
-    ctaLink: '/register',
-    highlight: true,
-  },
 ];
 
 const FAQ = [
@@ -158,95 +97,39 @@ const FAQ = [
 ];
 
 // ════════════════════════════════════════════════════════════
-//  Componente principal
+//  Página principal
 // ════════════════════════════════════════════════════════════
 export default function LandingPage() {
-  const { token } = useAuth();
   const [openFaq, setOpenFaq] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else {
+      window.scrollTo({ top: 0 });
+    }
+  }, [location]);
 
   return (
     <div className="min-h-screen bg-bg text-text-primary overflow-x-hidden">
+      <LandingNavbar />
 
       {/* ════════════════════════════════════════════════════
-          NAVBAR
-      ════════════════════════════════════════════════════ */}
-      <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'bg-bg/85 backdrop-blur-xl border-b border-border shadow-lg shadow-black/30'
-          : 'bg-transparent'
-      }`}>
-        <div className="max-w-7xl mx-auto px-6 h-18 py-3 flex items-center justify-between">
-          <button onClick={() => scrollTo('home')} className="cursor-pointer">
-            <GestekLogo size={40} showText tagline />
-          </button>
-
-          {/* Links centrales (desktop) */}
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(l => (
-              <button
-                key={l.id}
-                onClick={() => scrollTo(l.id)}
-                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors rounded-lg hover:bg-surface-2/50"
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Acciones derechas */}
-          <div className="flex items-center gap-3">
-            {token ? (
-              <Link to="/dashboard" className="btn-primary text-sm px-5 py-2.5 group">
-                Ir al panel
-                <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                </svg>
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="hidden sm:inline-flex btn-ghost text-sm px-4 py-2.5">
-                  Iniciar sesión
-                </Link>
-                <Link to="/login" className="btn-primary text-sm px-5 py-2.5 group">
-                  Acceder
-                  <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                  </svg>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* ════════════════════════════════════════════════════
-          HERO (#home)
+          HERO
       ════════════════════════════════════════════════════ */}
       <section id="home" className="relative pt-36 pb-28 px-6 overflow-hidden">
-        {/* Background decorativo */}
         <div className="absolute inset-0 bg-grid opacity-40" />
         <div className="absolute inset-0 bg-radial-glow" />
         <div className="absolute inset-0 bg-radial-accent" />
-
-        {/* Blobs animados */}
         <div className="absolute top-20 -left-20 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-blob" />
         <div className="absolute top-40 right-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-blob animation-delay-400" />
         <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-blob animation-delay-800" />
 
         <div className="relative max-w-5xl mx-auto text-center">
-
-          {/* Logo grande arriba */}
           <div className="flex justify-center mb-8 animate-fade-in">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl animate-pulse" />
@@ -254,7 +137,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-text-secondary text-xs font-medium mb-8 animate-fade-up">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -264,7 +146,6 @@ export default function LandingPage() {
             <span>· Event Operations</span>
           </div>
 
-          {/* Headline */}
           <h1 className="text-5xl sm:text-7xl font-extrabold font-head leading-[1.05] mb-6 animate-fade-up animation-delay-200">
             El sistema operativo<br />
             <span className="text-gradient-cyan animate-gradient inline-block">
@@ -274,29 +155,23 @@ export default function LandingPage() {
 
           <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up animation-delay-400">
             Crea, gestiona y publica eventos presenciales, virtuales e híbridos.
-            Premia la participación de tus asistentes con <span className="text-cyan-400 font-semibold">gamificación</span>{' '}
+            Premia la participación de tus asistentes con{' '}
+            <span className="text-cyan-400 font-semibold">gamificación</span>{' '}
             y mide todo en tiempo real.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up animation-delay-600">
-            <Link
-              to="/login"
-              className="btn-primary px-8 py-3.5 text-base w-full sm:w-auto group glow-primary"
-            >
+            <Link to="/login" className="btn-primary px-8 py-3.5 text-base w-full sm:w-auto group glow-primary">
               Acceder ahora
               <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
               </svg>
             </Link>
-            <button
-              onClick={() => scrollTo('funciones')}
-              className="btn-secondary px-8 py-3.5 text-base w-full sm:w-auto"
-            >
-              Ver funciones
-            </button>
+            <Link to="/planes" className="btn-secondary px-8 py-3.5 text-base w-full sm:w-auto">
+              Ver planes y precios
+            </Link>
           </div>
 
-          {/* Mini stats */}
           <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto animate-fade-up animation-delay-800">
             {[
               { v: '100%', l: 'White-label' },
@@ -314,7 +189,7 @@ export default function LandingPage() {
       </section>
 
       {/* ════════════════════════════════════════════════════
-          FUNCIONES (#funciones)
+          FUNCIONES
       ════════════════════════════════════════════════════ */}
       <section id="funciones" className="relative py-28 px-6">
         <div className="absolute top-1/2 right-0 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
@@ -323,7 +198,8 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <span className="text-xs font-bold tracking-widest text-primary uppercase">Funciones</span>
             <h2 className="text-4xl sm:text-5xl font-bold font-head mt-3 mb-4">
-              Todo lo que necesitas, <br className="hidden sm:block" />
+              Todo lo que necesitas,{' '}
+              <br className="hidden sm:block" />
               <span className="text-gradient">en un solo lugar</span>
             </h2>
             <p className="text-text-secondary max-w-2xl mx-auto text-lg">
@@ -332,14 +208,9 @@ export default function LandingPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((f, i) => (
-              <div
-                key={f.title}
-                className="card p-7 lift relative overflow-hidden group"
-              >
-                {/* Hover gradient */}
+            {FEATURES.map(f => (
+              <div key={f.title} className="card p-7 lift relative overflow-hidden group">
                 <div className={`absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br ${f.color} opacity-0 group-hover:opacity-20 blur-2xl transition-opacity duration-500 rounded-full`} />
-
                 <div className={`relative w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mb-5 shadow-lg`}>
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                     {f.icon}
@@ -354,7 +225,7 @@ export default function LandingPage() {
       </section>
 
       {/* ════════════════════════════════════════════════════
-          TIPOS DE EVENTOS (#eventos)
+          TIPOS DE EVENTOS
       ════════════════════════════════════════════════════ */}
       <section id="eventos" className="relative py-28 px-6 bg-surface/30 border-y border-border">
         <div className="max-w-6xl mx-auto">
@@ -369,12 +240,8 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {EVENT_TYPES.map((t, i) => (
-              <div
-                key={t.label}
-                className="card p-6 text-center lift group"
-                style={{ animationDelay: `${i * 80}ms` }}
-              >
+            {EVENT_TYPES.map(t => (
+              <div key={t.label} className="card p-6 text-center lift group">
                 <div className="text-5xl mb-3 inline-block group-hover:scale-110 transition-transform duration-300">
                   {t.emoji}
                 </div>
@@ -387,7 +254,7 @@ export default function LandingPage() {
       </section>
 
       {/* ════════════════════════════════════════════════════
-          GAMIFICACIÓN (#gamificacion)
+          GAMIFICACIÓN
       ════════════════════════════════════════════════════ */}
       <section id="gamificacion" className="relative py-28 px-6 overflow-hidden">
         <div className="absolute top-20 right-10 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl animate-blob" />
@@ -395,20 +262,18 @@ export default function LandingPage() {
 
         <div className="relative max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-14 items-center">
-            {/* Texto */}
             <div>
               <span className="text-xs font-bold tracking-widest text-yellow-400 uppercase">Gamificación</span>
               <h2 className="text-4xl sm:text-5xl font-bold font-head mt-3 mb-5 leading-tight">
-                Premia la participación <br />
+                Premia la participación<br />
                 <span className="bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
                   de tus asistentes
                 </span>
               </h2>
               <p className="text-lg text-text-secondary mb-8 leading-relaxed">
                 Invita a interactuar y conectar cada vez más con tu evento.
-                Los usuarios ganan puntos al interactuar con la app del evento y sus diferentes opciones.
+                Los asistentes ganan puntos al interactuar con la app del evento y sus diferentes opciones.
               </p>
-
               <div className="space-y-4">
                 {GAMIFICATION.map(g => (
                   <div key={g.title} className="flex gap-4 items-start">
@@ -422,10 +287,9 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Mockup visual del leaderboard */}
+            {/* Leaderboard mockup */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-purple-500/20 rounded-3xl blur-2xl animate-pulse" />
-
               <div className="relative card p-7 border-2 border-yellow-500/30 shadow-glow">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
@@ -434,14 +298,13 @@ export default function LandingPage() {
                   </div>
                   <span className="badge-yellow text-xs">EN VIVO</span>
                 </div>
-
                 <div className="space-y-3">
                   {[
-                    { pos: 1, emoji: '🥇', name: 'Carolina M.', pts: 2840, color: 'from-yellow-400 to-amber-500' },
-                    { pos: 2, emoji: '🥈', name: 'Andrés T.',   pts: 2105, color: 'from-slate-300 to-slate-400' },
-                    { pos: 3, emoji: '🥉', name: 'Valentina P.', pts: 1798, color: 'from-orange-400 to-amber-600' },
-                    { pos: 4, emoji: '4️⃣', name: 'Miguel H.',   pts: 1342, color: 'from-primary to-accent' },
-                    { pos: 5, emoji: '5️⃣', name: 'Laura G.',    pts: 1180, color: 'from-primary to-accent' },
+                    { pos: 1, emoji: '🥇', name: 'Carolina M.',   pts: 2840, color: 'from-yellow-400 to-amber-500' },
+                    { pos: 2, emoji: '🥈', name: 'Andrés T.',     pts: 2105, color: 'from-slate-300 to-slate-400' },
+                    { pos: 3, emoji: '🥉', name: 'Valentina P.',  pts: 1798, color: 'from-orange-400 to-amber-600' },
+                    { pos: 4, emoji: '4️⃣', name: 'Miguel H.',     pts: 1342, color: 'from-primary to-accent' },
+                    { pos: 5, emoji: '5️⃣', name: 'Laura G.',      pts: 1180, color: 'from-primary to-accent' },
                   ].map(u => (
                     <div key={u.pos} className="flex items-center gap-4 p-3 bg-surface-2/50 rounded-xl hover:bg-surface-2 transition-colors">
                       <span className="text-2xl">{u.emoji}</span>
@@ -454,19 +317,16 @@ export default function LandingPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-text-primary text-sm">{u.pts.toLocaleString()}</p>
-                        <p className="text-[10px] text-text-secondary uppercase tracking-wide">puntos</p>
+                        <p className="text-[10px] text-text-secondary uppercase tracking-wide">pts</p>
                       </div>
                     </div>
                   ))}
                 </div>
-
                 <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-xs">
                   <span className="text-text-secondary">Tus puntos:</span>
                   <span className="font-bold text-yellow-400 text-lg">⭐ 1,180</span>
                 </div>
               </div>
-
-              {/* Badges flotantes decorativos */}
               <div className="absolute -top-6 -right-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-3xl shadow-2xl animate-float-slow">
                 🏅
               </div>
@@ -479,76 +339,7 @@ export default function LandingPage() {
       </section>
 
       {/* ════════════════════════════════════════════════════
-          PLANES (#planes)
-      ════════════════════════════════════════════════════ */}
-      <section id="planes" className="relative py-28 px-6 bg-surface/30 border-y border-border">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase">Planes</span>
-            <h2 className="text-4xl sm:text-5xl font-bold font-head mt-3 mb-4">
-              Empieza gratis, <span className="text-gradient">crece sin límites</span>
-            </h2>
-            <p className="text-text-secondary max-w-2xl mx-auto text-lg">
-              Al registrarte siempre comienzas en el plan Gratis.
-              Mejora a Premium desde tu panel cuando lo necesites.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {PLANS.map(plan => (
-              <div
-                key={plan.name}
-                className={`relative card p-8 border-2 ${plan.color} lift ${
-                  plan.highlight ? 'shadow-glow scale-105' : ''
-                }`}
-              >
-                {plan.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-primary to-accent text-white text-xs font-bold uppercase tracking-wide shadow-lg">
-                    {plan.badge}
-                  </span>
-                )}
-
-                <h3 className="text-2xl font-bold font-head mb-1">{plan.name}</h3>
-                <p className="text-sm text-text-secondary mb-5">{plan.tagline}</p>
-
-                <div className="mb-6 flex items-baseline gap-1">
-                  <span className="text-5xl font-extrabold font-head text-text-primary">{plan.price}</span>
-                  <span className="text-text-secondary">{plan.period}</span>
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map(f => (
-                    <li key={f} className="flex items-start gap-3 text-sm">
-                      <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${plan.highlight ? 'text-primary' : 'text-emerald-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                      </svg>
-                      <span className="text-text-secondary">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  to={plan.ctaLink}
-                  className={`block text-center py-3 rounded-lg font-medium text-sm transition-all ${
-                    plan.highlight
-                      ? 'bg-primary hover:bg-primary-hover text-white glow-primary'
-                      : 'bg-surface-2 hover:bg-border text-text-primary border border-border'
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-center text-sm text-text-secondary mt-8">
-            💡 El plan Premium se compra desde el dashboard una vez inicies sesión.
-          </p>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════════════
-          FAQ (#faq)
+          FAQ
       ════════════════════════════════════════════════════ */}
       <section id="faq" className="relative py-28 px-6">
         <div className="max-w-3xl mx-auto">
@@ -564,9 +355,7 @@ export default function LandingPage() {
             {FAQ.map((item, i) => (
               <div
                 key={i}
-                className={`card overflow-hidden transition-all duration-300 ${
-                  openFaq === i ? 'border-primary/50' : ''
-                }`}
+                className={`card overflow-hidden transition-all duration-300 ${openFaq === i ? 'border-primary/50' : ''}`}
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
@@ -574,21 +363,15 @@ export default function LandingPage() {
                 >
                   <span className="font-semibold font-head text-text-primary">{item.q}</span>
                   <svg
-                    className={`w-5 h-5 text-text-secondary flex-shrink-0 transition-transform duration-300 ${
-                      openFaq === i ? 'rotate-180 text-primary' : ''
-                    }`}
+                    className={`w-5 h-5 text-text-secondary flex-shrink-0 transition-transform duration-300 ${openFaq === i ? 'rotate-180 text-primary' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                   </svg>
                 </button>
-                <div className={`grid transition-all duration-300 ${
-                  openFaq === i ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                }`}>
+                <div className={`grid transition-all duration-300 ${openFaq === i ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                   <div className="overflow-hidden">
-                    <p className="px-6 pb-5 text-sm text-text-secondary leading-relaxed">
-                      {item.a}
-                    </p>
+                    <p className="px-6 pb-5 text-sm text-text-secondary leading-relaxed">{item.a}</p>
                   </div>
                 </div>
               </div>
@@ -602,16 +385,13 @@ export default function LandingPage() {
       ════════════════════════════════════════════════════ */}
       <section className="relative py-24 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-30" />
-
         <div className="relative max-w-3xl mx-auto">
           <div
             className="card p-12 text-center border-primary/30 relative overflow-hidden"
             style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.10) 0%, rgba(124,58,237,0.10) 100%)' }}
           >
-            {/* Decoración */}
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-primary/20 rounded-full blur-3xl" />
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-accent/20 rounded-full blur-3xl" />
-
             <div className="relative">
               <div className="flex justify-center mb-6 animate-float">
                 <GestekLogo size={64} />
@@ -620,14 +400,14 @@ export default function LandingPage() {
                 ¿Listo para <span className="text-gradient">comenzar?</span>
               </h2>
               <p className="text-text-secondary mb-8 max-w-md mx-auto">
-                Únete gratis a GESTEK y crea tu primer evento en menos de 5 minutos.
+                Únete gratis a GESTEK y crea tu primer evento en menos de 5 minutos. Sin tarjeta de crédito.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/register" className="btn-primary px-8 py-3.5 text-base glow-primary">
+                <Link to="/login" className="btn-primary px-8 py-3.5 text-base glow-primary">
                   Crear cuenta gratis
                 </Link>
-                <Link to="/login" className="btn-secondary px-8 py-3.5 text-base">
-                  Iniciar sesión
+                <Link to="/planes" className="btn-secondary px-8 py-3.5 text-base">
+                  Ver planes
                 </Link>
               </div>
             </div>
@@ -635,39 +415,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════
-          FOOTER
-      ════════════════════════════════════════════════════ */}
-      <footer className="border-t border-border py-10 px-6 bg-surface/30">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
-              <GestekLogo size={36} showText tagline />
-              <p className="text-xs text-text-secondary mt-3 max-w-xs">
-                Manage. Automate. Scale. <br />
-                La plataforma white-label para gestión integral de eventos.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {NAV_LINKS.map(l => (
-                <button
-                  key={l.id}
-                  onClick={() => scrollTo(l.id)}
-                  className="text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-text-secondary">
-            <p>GestorEventosMarcaBlanca &copy; {new Date().getFullYear()} — Todos los derechos reservados.</p>
-            <p>Hecho con <span className="text-pink-400">♥</span> para organizadores de eventos.</p>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
