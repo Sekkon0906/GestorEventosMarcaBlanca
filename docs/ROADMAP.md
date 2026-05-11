@@ -33,9 +33,14 @@ Documento maestro de funcionalidades acordadas. Las casillas marcadas son lo que
 - [ ] Todos los clientes nuevos = rol `organizador`
 - [ ] Login funcional contra Supabase Auth
 - [ ] Recuperación de contraseña por email (Supabase SMTP)
-- [ ] Confirmación de cuenta por email
-- [ ] Sesión persistente + refresh tokens
-- [ ] Botones "Acceder" e "Iniciar sesión" unificados a la misma ruta `/login`
+- [x] Confirmación de cuenta por email (`/confirmar`)
+- [x] Sesión persistente + refresh tokens (Supabase PKCE)
+- [x] Botones "Acceder" e "Iniciar sesión" unificados a la misma ruta `/login`
+- [x] Cliente Supabase JS instalado y configurado
+- [x] AuthContext refactorizado a Supabase (login, register, logout, reset, update, resend)
+- [x] Página `/recuperar` para solicitar reset por email
+- [x] Página `/restablecer` para definir nueva contraseña
+- [x] Documentación en `docs/SUPABASE_SETUP.md`
 
 ## Fase 4 — Rutas y páginas públicas
 

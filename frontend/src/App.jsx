@@ -14,6 +14,9 @@ import PlanesPage         from './pages/public/PlanesPage.jsx';
 import FAQPage            from './pages/public/FAQPage.jsx';
 
 import AuthPage           from './pages/AuthPage.jsx';
+import RecuperarPage      from './pages/RecuperarPage.jsx';
+import ResetPasswordPage  from './pages/ResetPasswordPage.jsx';
+import ConfirmarPage      from './pages/ConfirmarPage.jsx';
 import DashboardPage      from './pages/DashboardPage.jsx';
 import EventsListPage     from './pages/events/EventsListPage.jsx';
 import EventCreatePage    from './pages/events/EventCreatePage.jsx';
@@ -49,9 +52,12 @@ export default function App() {
             </Route>
 
             {/* Auth pages (unified with panel-swap animation) */}
-            <Route path="/login"    element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
-            <Route path="/register" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
-            <Route path="/acceder"  element={<Navigate to="/login" replace />} />
+            <Route path="/login"        element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+            <Route path="/register"     element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+            <Route path="/acceder"      element={<Navigate to="/login" replace />} />
+            <Route path="/recuperar"    element={<RecuperarPage />} />
+            <Route path="/restablecer"  element={<ResetPasswordPage />} />
+            <Route path="/confirmar"    element={<ConfirmarPage />} />
 
             {/* App protegida */}
             <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>

@@ -253,11 +253,11 @@ function RegisterText() {
 }
 
 function RegisterForm() {
-  const { register } = useAuth();
+  const { register, resendConfirmation } = useAuth();
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1 | 2 | 'sent'
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
@@ -297,12 +297,24 @@ function RegisterForm() {
     });
     setLoading(false);
     if (res.ok) {
-      success('Cuenta creada. Revisa tu correo para confirmar.');
-      setTimeout(() => navigate('/login'), 1500);
+      if (res.requiresConfirmation) {
+        setStep('sent');
+      } else {
+        success('Cuenta creada exitosamente.');
+        setTimeout(() => navigate('/dashboard'), 800);
+      }
     } else {
       setErr(res.error);
       toastError(res.error);
     }
+  };
+
+  const onResend = async () => {
+    setLoading(true);
+    const res = await resendConfirmation(paso1.email);
+    setLoading(false);
+    if (res.ok) success('Correo reenviado.');
+    else toastError(res.error);
   };
 
   return (
@@ -312,6 +324,7 @@ function RegisterForm() {
         <span className="text-xl font-bold font-display tracking-tight">GESTEK</span>
       </Link>
 
+      {step !== 'sent' && (
       <div className="flex items-center gap-3 mb-7">
         {[1, 2].map(n => (
           <div key={n} className="flex items-center gap-2 flex-1">
@@ -325,6 +338,38 @@ function RegisterForm() {
           </div>
         ))}
       </div>
+      )}
+
+      {step === 'sent' && (
+        <div className="text-center py-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-success/15 border border-success/30 mb-6">
+            <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold font-display tracking-tight mb-3">Revisa tu correo</h1>
+          <p className="text-base text-text-2 mb-2">
+            Te enviamos un enlace de confirmación a
+          </p>
+          <p className="text-base text-text-1 font-semibold mb-6">{paso1.email}</p>
+          <p className="text-sm text-text-3 mb-8">
+            Haz click en el enlace para activar tu cuenta. Si no llega en 2 minutos, revisa la carpeta de spam.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onResend}
+              disabled={loading}
+              className="px-5 py-2.5 rounded-full border border-border-2 text-text-1 hover:bg-surface-2 text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {loading ? 'Reenviando...' : 'Reenviar correo'}
+            </button>
+            <Link to="/login" className="px-5 py-2.5 rounded-full bg-text-1 text-bg hover:bg-white text-sm font-semibold transition-colors">
+              Ir al login
+            </Link>
+          </div>
+        </div>
+      )}
 
       {step === 1 && (
         <>
