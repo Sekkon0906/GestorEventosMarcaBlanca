@@ -28,14 +28,18 @@ export default function PublicNavbar() {
   return (
     <header className="fixed top-0 inset-x-0 z-50 px-3 sm:px-6 pt-3 sm:pt-4">
       <nav
-        className={`mx-auto max-w-6xl flex items-center justify-between gap-3 rounded-full pl-4 pr-2 py-2
+        className={`mx-auto max-w-6xl flex items-center justify-between gap-3 rounded-full pl-5 pr-2 py-2.5
           transition-all duration-300 ${scrolled
             ? 'bg-surface/85 backdrop-blur-xl border border-border-2 shadow-card'
             : 'bg-surface/60 backdrop-blur-md border border-border'}`}
       >
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-          <img src={logoUrl} alt="GESTEK" className="h-7 sm:h-8 w-auto" />
+          <img
+            src={logoUrl}
+            alt="GESTEK"
+            className="h-10 sm:h-12 w-auto transition-transform duration-500 group-hover:scale-105 animate-[logoShine_6s_ease-in-out_infinite]"
+          />
         </Link>
 
         {/* Desktop nav links */}
