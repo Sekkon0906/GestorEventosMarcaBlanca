@@ -72,7 +72,7 @@ export default function EventCreatePage() {
                   i === step ? 'bg-gradient-primary text-white shadow-glow-sm' :
                   'bg-surface-2 text-text-3 cursor-default border border-border'}`}
             >
-              {i < step ? '✓' : i + 1}
+              {i < step ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg> : i + 1}
             </button>
             <span className={`text-xs font-medium hidden sm:block flex-shrink-0 ${i === step ? 'text-text-1' : 'text-text-3'}`}>
               {s}

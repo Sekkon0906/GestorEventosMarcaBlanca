@@ -129,7 +129,7 @@ export default function UsersPage() {
                             Guardar
                           </button>
                           <button onClick={() => setEditingId(null)} className="text-xs text-text-3 hover:underline">
-                            ✕
+                            Cancelar
                           </button>
                         </div>
                       ) : (

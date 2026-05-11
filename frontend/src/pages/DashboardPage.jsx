@@ -39,7 +39,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-text-2 text-sm mb-0.5">{saludo},</p>
           <h1 className="text-2xl font-bold font-display text-text-1">
-            {nombre} <span className="text-gradient">👋</span>
+            {nombre}
           </h1>
           <p className="text-sm text-text-2 mt-1">Aquí tienes el resumen de tu operación de eventos.</p>
         </div>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
           {/* Tip */}
           <div className="card p-4 border-primary/20 bg-primary/5">
-            <p className="text-xs font-semibold text-primary-light mb-1">💡 Pro tip</p>
+            <p className="text-xs font-semibold text-primary-light mb-1">Pro tip</p>
             <p className="text-xs text-text-2 leading-relaxed">
               Publica tus eventos para que sean visibles al público y empezar a recibir inscripciones.
             </p>

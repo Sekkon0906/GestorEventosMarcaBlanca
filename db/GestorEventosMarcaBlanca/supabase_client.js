@@ -7,7 +7,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY; // service_role key (backend)
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en el .env');
+  console.error('Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en el .env');
   process.exit(1);
 }
 

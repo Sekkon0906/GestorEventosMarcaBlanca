@@ -12,21 +12,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Descargar el código
+      - name: Descargar el codigo
         uses: actions/checkout@v4
 
-      - name: ⚙️ Configurar Node.js 22
+      - name: Configurar Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: 📦 Instalar dependencias
+      - name: Instalar dependencias
         run: npm install
 
-      - name: 🔍 Revisar código (Lint)
+      - name: Revisar codigo (Lint)
         run: npm run lint --if-present
 
-      - name: 🧪 Ejecutar Pruebas (Tests)
+      - name: Ejecutar Pruebas (Tests)
         run: npm test --if-present
 
   # TAREA 2: Despliegue (Deploy)
@@ -34,5 +34,5 @@ jobs:
     needs: build-and-test # Solo se ejecuta si la tarea 1 pasó sin errores
     runs-on: ubuntu-latest
     steps:
-      - name: 🚀 Simular Despliegue a Producción
+      - name: Simular Despliegue a Produccion
         run: echo "Todo está en verde. Aquí iría la conexión al servidor final."
