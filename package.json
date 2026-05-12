@@ -4,13 +4,37 @@
   "description": "API Sistema de Eventos Marca Blanca - Cristhian Ospina",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "dev:frontend": "npm run dev --prefix ./frontend",
+    "dev:full": "concurrently --names \"API,FRONTEND\" --prefix-colors \"cyan,magenta\" \"node --watch index.js\" \"npm run dev --prefix ./frontend\"",
+    "install:all": "npm install && npm install --prefix ./frontend",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "routes/auth.js",
+      "middleware/roles.js",
+      "services/notification.service.js"
+    ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "jest": "^29.7.0",
+    "supertest": "^7.2.2"
   },
   "dependencies": {
     "@sentry/node": "^10.52.0",
     "@supabase/supabase-js": "^2.105.3",
     "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "dotenv": "^16.0.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.0",
