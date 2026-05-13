@@ -4,27 +4,26 @@ const jwt       = require('jsonwebtoken');
 const supabase  = require('../db/supabase');
 const verificarToken = require('../middleware/auth');
 const notificationService = require('../services/notification.service');
-const { ROLES_VALIDOS, PERMISOS_POR_ROL } = require('../middleware/roles');
-
-const SECRET = process.env.JWT_SECRET || 'gestek_secret_change_in_production';
+const { PERMISOS_POR_ROL } = require('../middleware/roles');
+const { JWT_SECRET, JWT_EXPIRES } = require('../config/env');
 
 // ── POST /auth/register ────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { nombre, email, password, rol, permisos } = req.body;
+    const { nombre, email, password } = req.body;
+
+    // Nota: `rol` y `permisos` del body son ignorados intencionalmente.
+    // Todo usuario nuevo nace como "asistente". El rol lo asigna un admin_global.
 
     if (!nombre || !email || !password)
       return res.status(400).json({ error: 'nombre, email y password son obligatorios.' });
 
-    const rolFinal = rol || 'asistente';
-    if (!ROLES_VALIDOS.includes(rolFinal))
-      return res.status(400).json({ error: `Rol inválido. Valores: ${ROLES_VALIDOS.join(', ')}.`, roles_validos: ROLES_VALIDOS });
+    if (password.length < 8)
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
 
-    const TODOS_LOS_PERMISOS = [...new Set(Object.values(PERMISOS_POR_ROL).flat())];
-    const permisosExtra      = Array.isArray(permisos) ? permisos : [];
-    const permisosInvalidos  = permisosExtra.filter(p => !TODOS_LOS_PERMISOS.includes(p));
-    if (permisosInvalidos.length > 0)
-      return res.status(400).json({ error: `Permisos inválidos: ${permisosInvalidos.join(', ')}.`, permisos_disponibles: TODOS_LOS_PERMISOS });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ error: 'Formato de email inválido.' });
 
     const { data: existe } = await supabase
       .from('usuarios')
@@ -40,11 +39,11 @@ router.post('/register', async (req, res) => {
     const { data: usuario, error: insertError } = await supabase
       .from('usuarios')
       .insert({
-        nombre        : nombre.trim(),
-        email         : email.toLowerCase().trim(),
+        nombre       : nombre.trim(),
+        email        : email.toLowerCase().trim(),
         password_hash,
-        rol           : rolFinal,
-        permisos      : permisosExtra,
+        rol          : 'asistente',   // siempre asistente — nunca del body
+        permisos     : [],
       })
       .select('id, nombre, email, rol, permisos, created_at')
       .single();
@@ -54,10 +53,10 @@ router.post('/register', async (req, res) => {
     try {
       notificationService.create({
         type   : 'USER_REGISTRATION',
-        message: `Nuevo usuario registrado: ${usuario.nombre} (${usuario.email}) — rol: ${rolFinal}`,
+        message: `Nuevo usuario registrado: ${usuario.nombre} (${usuario.email})`,
         userId : usuario.id,
       });
-    } catch { /* no-op */ }
+    } catch { /* notificación no bloquea el flujo */ }
 
     res.status(201).json({
       mensaje : 'Usuario registrado exitosamente.',
@@ -100,7 +99,7 @@ router.post('/login', async (req, res) => {
       organizacion_id: usuario.organizacion_id || null,
     };
 
-    const token = jwt.sign(payload, SECRET, { expiresIn: '8h' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
     res.json({ mensaje: 'Login exitoso.', token, usuario: payload });
   } catch (err) {
