@@ -1,188 +1,201 @@
 /**
  * tests/notification.service.test.js — JuanesSosa (QA)
  * Suite de tests unitarios para NotificationService
+ *
+ * Actualizado 2026-05-12:
+ *   - API ahora es async (create/getAll/markAsRead retornan Promise)
+ *   - Almacén interno renombrado _store → _memStore
+ *   - Supabase mockeado para forzar modo memoria en tests
+ *   - Socket.IO usa rooms (io.to(room).emit) en lugar de io.emit global
  */
 
-// Aislamos el singleton antes de cada test
-beforeEach(() => {
-  jest.resetModules();
+// ── Mock de Supabase — fuerza fallback a memoria ──────────────
+jest.mock('../db/supabase', () => {
+  const makeErr = () => ({ data: null, error: new Error('supabase_mock') });
+  return {
+    from: () => ({
+      insert : () => ({ select: () => ({ single: async () => makeErr() }) }),
+      update : () => ({ eq: () => ({ select: () => ({ single: async () => makeErr() }) }) }),
+      select : () => ({ order: () => ({ limit: async () => makeErr(), eq: () => ({ limit: async () => makeErr() }) }) }),
+    }),
+  };
 });
+
+// ── Aislamos el singleton antes de cada test ──────────────────
+beforeEach(() => jest.resetModules());
 
 const getService = () => require('../services/notification.service');
 
+// ── Helper — fuerza modo memoria (evita console.warn en tests) ─
+function inMemoryService() {
+  const svc = getService();
+  svc._useSupabase = false;
+  svc._memStore.length = 0;
+  return svc;
+}
+
+// ════════════════════════════════════════════════════════════
 describe('NotificationService', () => {
 
-  // ── create() ──────────────────────────────────────────────
-
+  // ── create() ─────────────────────────────────────────────
   describe('create()', () => {
-    it('crea una notificación con tipo válido USER_REGISTRATION', () => {
-      const service = getService();
-      const notif = service.create({
-        type   : 'USER_REGISTRATION',
-        message: 'Usuario Juan registrado',
-        userId : 1,
-      });
+    it('crea una notificación con tipo válido USER_REGISTRATION', async () => {
+      const svc   = inMemoryService();
+      const notif = await svc.create({ type: 'USER_REGISTRATION', message: 'Usuario Juan registrado', userId: 1 });
 
-      expect(notif).toMatchObject({
-        type   : 'USER_REGISTRATION',
-        message: 'Usuario Juan registrado',
-        userId : 1,
-        read   : false,
-      });
+      expect(notif).toMatchObject({ type: 'USER_REGISTRATION', message: 'Usuario Juan registrado', userId: 1, read: false });
       expect(notif.id).toMatch(/^ntf_/);
       expect(notif.createdAt).toBeDefined();
     });
 
-    it('crea una notificación con tipo EVENT_UPDATE', () => {
-      const service = getService();
-      const notif = service.create({ type: 'EVENT_UPDATE', message: 'Evento actualizado' });
+    it('crea una notificación con tipo EVENT_UPDATE', async () => {
+      const svc   = inMemoryService();
+      const notif = await svc.create({ type: 'EVENT_UPDATE', message: 'Evento actualizado' });
       expect(notif.type).toBe('EVENT_UPDATE');
     });
 
-    it('crea una notificación con tipo SYSTEM_ALERT', () => {
-      const service = getService();
-      const notif = service.create({ type: 'SYSTEM_ALERT', message: 'Alerta del sistema' });
+    it('crea una notificación con tipo SYSTEM_ALERT', async () => {
+      const svc   = inMemoryService();
+      const notif = await svc.create({ type: 'SYSTEM_ALERT', message: 'Alerta del sistema' });
       expect(notif.type).toBe('SYSTEM_ALERT');
     });
 
-    it('lanza error si el tipo es inválido', () => {
-      const service = getService();
-      expect(() =>
-        service.create({ type: 'TIPO_INVALIDO', message: 'test' })
-      ).toThrow('Tipo inválido');
+    it('lanza error si el tipo es inválido', async () => {
+      const svc = inMemoryService();
+      await expect(svc.create({ type: 'TIPO_INVALIDO', message: 'test' }))
+        .rejects.toThrow('Tipo inválido');
     });
 
-    it('userId es null por defecto', () => {
-      const service = getService();
-      const notif = service.create({ type: 'SYSTEM_ALERT', message: 'sin user' });
+    it('userId es null por defecto', async () => {
+      const svc   = inMemoryService();
+      const notif = await svc.create({ type: 'SYSTEM_ALERT', message: 'sin user' });
       expect(notif.userId).toBeNull();
     });
 
-    it('asigna un id único a cada notificación', () => {
-      const service = getService();
-      const n1 = service.create({ type: 'SYSTEM_ALERT', message: 'a' });
-      const n2 = service.create({ type: 'SYSTEM_ALERT', message: 'b' });
+    it('asigna un id único a cada notificación', async () => {
+      const svc = inMemoryService();
+      const n1  = await svc.create({ type: 'SYSTEM_ALERT', message: 'a' });
+      const n2  = await svc.create({ type: 'SYSTEM_ALERT', message: 'b' });
       expect(n1.id).not.toBe(n2.id);
     });
   });
 
-  // ── getAll() ──────────────────────────────────────────────
-
+  // ── getAll() ─────────────────────────────────────────────
   describe('getAll()', () => {
-    it('retorna array vacío al iniciar (sin simulador)', () => {
-      const service = getService();
-      // El simulador usa setInterval con unref, no dispara en tests
-      // Limpiamos manualmente el store interno para aislar
-      service._store.length = 0;
-      expect(service.getAll()).toEqual([]);
+    it('retorna array vacío al iniciar', async () => {
+      const svc = inMemoryService();
+      const all = await svc.getAll();
+      expect(all).toEqual([]);
     });
 
-    it('retorna las notificaciones en orden más reciente primero', () => {
-      const service = getService();
-      service._store.length = 0;
-      service.create({ type: 'SYSTEM_ALERT', message: 'primera' });
-      service.create({ type: 'SYSTEM_ALERT', message: 'segunda' });
+    it('retorna las notificaciones en orden más reciente primero', async () => {
+      const svc = inMemoryService();
+      await svc.create({ type: 'SYSTEM_ALERT', message: 'primera' });
+      await svc.create({ type: 'SYSTEM_ALERT', message: 'segunda' });
 
-      const todas = service.getAll();
+      const todas = await svc.getAll();
       expect(todas[0].message).toBe('segunda');
       expect(todas[1].message).toBe('primera');
     });
 
-    it('no muta el store interno al llamar getAll()', () => {
-      const service = getService();
-      service._store.length = 0;
-      service.create({ type: 'SYSTEM_ALERT', message: 'test' });
+    it('no muta el store interno al llamar getAll()', async () => {
+      const svc = inMemoryService();
+      await svc.create({ type: 'SYSTEM_ALERT', message: 'test' });
 
-      const resultado = service.getAll();
-      resultado.pop(); // modificamos el resultado
-      expect(service._store.length).toBe(1); // el store no se afecta
+      const resultado = await svc.getAll();
+      resultado.pop(); // mutamos el resultado
+      expect(svc._memStore.length).toBe(1); // store interno intacto
+    });
+
+    it('filtra por userId cuando se pasa', async () => {
+      const svc = inMemoryService();
+      await svc.create({ type: 'USER_REGISTRATION', message: 'user 1', userId: 1 });
+      await svc.create({ type: 'USER_REGISTRATION', message: 'user 2', userId: 2 });
+      await svc.create({ type: 'SYSTEM_ALERT', message: 'sistema' });
+
+      const deUser1 = await svc.getAll({ userId: 1 });
+      // usuario 1 ve las suyas + las de sistema (userId null)
+      expect(deUser1.some(n => n.message === 'user 1')).toBe(true);
+      expect(deUser1.some(n => n.message === 'user 2')).toBe(false);
     });
   });
 
-  // ── markAsRead() ──────────────────────────────────────────
-
+  // ── markAsRead() ─────────────────────────────────────────
   describe('markAsRead()', () => {
-    it('marca una notificación como leída', () => {
-      const service = getService();
-      service._store.length = 0;
-      const notif = service.create({ type: 'SYSTEM_ALERT', message: 'leer esto' });
+    it('marca una notificación como leída', async () => {
+      const svc   = inMemoryService();
+      const notif = await svc.create({ type: 'SYSTEM_ALERT', message: 'leer esto' });
 
-      const actualizada = service.markAsRead(notif.id);
+      const actualizada = await svc.markAsRead(notif.id);
       expect(actualizada.read).toBe(true);
     });
 
-    it('retorna null si el id no existe', () => {
-      const service = getService();
-      const resultado = service.markAsRead('id_que_no_existe');
+    it('retorna null si el id no existe', async () => {
+      const svc       = inMemoryService();
+      const resultado = await svc.markAsRead('id_que_no_existe');
       expect(resultado).toBeNull();
     });
 
-    it('no afecta otras notificaciones al marcar una como leída', () => {
-      const service = getService();
-      service._store.length = 0;
-      const n1 = service.create({ type: 'SYSTEM_ALERT', message: 'uno' });
-      const n2 = service.create({ type: 'SYSTEM_ALERT', message: 'dos' });
+    it('no afecta otras notificaciones al marcar una como leída', async () => {
+      const svc = inMemoryService();
+      const n1  = await svc.create({ type: 'SYSTEM_ALERT', message: 'uno' });
+      const n2  = await svc.create({ type: 'SYSTEM_ALERT', message: 'dos' });
 
-      service.markAsRead(n1.id);
+      await svc.markAsRead(n1.id);
       expect(n2.read).toBe(false);
     });
   });
 
-  // ── Límite de 100 notificaciones ──────────────────────────
-
+  // ── Límite de 100 notificaciones ─────────────────────────
   describe('límite de 100 notificaciones', () => {
-    it('no supera 100 notificaciones en el store', () => {
-      const service = getService();
-      service._store.length = 0;
-
+    it('no supera 100 notificaciones en el store', async () => {
+      const svc = inMemoryService();
       for (let i = 0; i < 110; i++) {
-        service.create({ type: 'SYSTEM_ALERT', message: `notif ${i}` });
+        await svc.create({ type: 'SYSTEM_ALERT', message: `notif ${i}` });
       }
-
-      expect(service._store.length).toBe(100);
+      expect(svc._memStore.length).toBe(100);
     });
 
-    it('descarta la más antigua cuando se supera el límite', () => {
-      const service = getService();
-      service._store.length = 0;
-
+    it('descarta la más antigua cuando se supera el límite', async () => {
+      const svc = inMemoryService();
       for (let i = 0; i < 100; i++) {
-        service.create({ type: 'SYSTEM_ALERT', message: `notif ${i}` });
+        await svc.create({ type: 'SYSTEM_ALERT', message: `notif ${i}` });
       }
-      const primera = service._store[0].message;
-      service.create({ type: 'SYSTEM_ALERT', message: 'nueva' });
+      const primera = svc._memStore[0].message;
+      await svc.create({ type: 'SYSTEM_ALERT', message: 'nueva' });
 
-      expect(service._store[0].message).not.toBe(primera);
-      expect(service._store[99].message).toBe('nueva');
+      expect(svc._memStore[0].message).not.toBe(primera);
+      expect(svc._memStore[99].message).toBe('nueva');
     });
   });
 
-  // ── Socket.IO (opcional) ──────────────────────────────────
-
+  // ── Socket.IO scoped ──────────────────────────────────────
   describe('setSocketServer()', () => {
-    it('emite evento socket al crear notificación si hay servidor IO', () => {
-      const service = getService();
-      service._store.length = 0;
+    it('emite a room del usuario cuando userId está presente', async () => {
+      const svc     = inMemoryService();
+      const mockTo  = jest.fn().mockReturnValue({ emit: jest.fn() });
+      svc.setSocketServer({ to: mockTo, emit: jest.fn() });
 
-      const mockEmit = jest.fn();
-      service.setSocketServer({ emit: mockEmit });
+      await svc.create({ type: 'EVENT_UPDATE', message: 'evento', userId: 42 });
 
-      service.create({ type: 'EVENT_UPDATE', message: 'evento via socket' });
-
-      expect(mockEmit).toHaveBeenCalledWith(
-        'notification_received',
-        expect.objectContaining({ type: 'EVENT_UPDATE' })
-      );
+      expect(mockTo).toHaveBeenCalledWith('user:42');
     });
 
-    it('no falla si no hay servidor IO configurado', () => {
-      const service = getService();
-      service._store.length = 0;
-      service._io = null;
+    it('emite a system_alerts cuando no hay userId (alerta global)', async () => {
+      const svc     = inMemoryService();
+      const mockTo  = jest.fn().mockReturnValue({ emit: jest.fn() });
+      svc.setSocketServer({ to: mockTo, emit: jest.fn() });
 
-      expect(() =>
-        service.create({ type: 'SYSTEM_ALERT', message: 'sin socket' })
-      ).not.toThrow();
+      await svc.create({ type: 'SYSTEM_ALERT', message: 'alerta global' });
+
+      expect(mockTo).toHaveBeenCalledWith('system_alerts');
+    });
+
+    it('no falla si no hay servidor IO configurado', async () => {
+      const svc = inMemoryService();
+      svc._io   = null;
+      await expect(svc.create({ type: 'SYSTEM_ALERT', message: 'sin socket' }))
+        .resolves.toBeDefined();
     });
   });
 });
