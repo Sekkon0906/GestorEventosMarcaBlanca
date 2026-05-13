@@ -1,149 +1,212 @@
 # GESTEK EVENTOS — Bitácora Técnica
 
-> Archivo de memoria técnica persistente del proyecto.
-> Se actualiza tras cada sesión de trabajo significativa.
-> Propósito: evitar releer todo el contexto en cada interacción y reducir consumo de tokens.
+> Memoria técnica persistente del proyecto. Se actualiza tras cada sesión significativa.
+> Propósito: contexto rápido sin releer todo el código. Reduce tokens en cada interacción.
 
 ---
 
 ## Estado actual
 
-**Fecha:** 2026-05-12
-**Versión:** 2.1.0 (backend hardened)
-**Entorno:** Desarrollo local — Node.js + Express 5 + Supabase + React 18 + Vite
+**Fecha última actualización:** 2026-05-12
+**Versión backend:** 2.2.0 (service layer parcial)
+**Versión frontend:** 2.0.0 (build limpio)
+**Tests:** 73/73 passing ✅
+**Build frontend:** 0 errores, 0 warnings ✅
+**Entorno:** Desarrollo local
 
-**Estado general:** MVP funcional. Backend con hardening de seguridad aplicado.
-Frontend en reestructuración (App.jsx reorganizado por el equipo, páginas públicas pendientes).
-Listo para demo interna. **No apto para producción pública aún** (ver TODO).
+**Estado general:** Sistema funcional y estable. Backend con hardening de seguridad y capa de servicio para auth. Frontend completamente implementado por el equipo con Tailwind CSS. Listo para demo.
 
 ---
 
-## Módulos implementados
+## Arquitectura actual
 
-### Backend (`/`)
-| Módulo | Archivo(s) | Estado |
+```
+GestorEventosMarcaBlanca/
+├── index.js                      ← Entry point — carga env → security → rutas
+├── instrument.js                 ← Sentry (debe ser primer require)
+│
+├── config/
+│   ├── env.js                    ← Fuente única de env vars. Exit(1) en prod si faltan
+│   └── security.js               ← Helmet + CORS enterprise + rate limiters + sanitize
+│
+├── middleware/
+│   ├── auth.js                   ← JWT verify (usa config/env — sin fallback)
+│   └── roles.js                  ← RBAC + permisos granulares
+│
+├── validators/                   ← NUEVO — validaciones puras sin efectos secundarios
+│   ├── auth.validator.js         ← validateRegister / validateLogin / validateUpdateMe
+│   └── evento.validator.js       ← validateCrear / validatePublicar / validateActualizar
+│
+├── services/                     ← NUEVO (parcial) — lógica de negocio desacoplada de HTTP
+│   ├── auth.service.js           ← register / login / getProfile / updateProfile
+│   └── notification.service.js  ← Singleton en memoria (PENDIENTE migrar a Supabase)
+│
+├── routes/                       ← Delgadas: parseo → validator → service → respuesta
+│   ├── auth.js                   ← Refactorizado: usa auth.service + auth.validator
+│   ├── eventos.js                ← Sin refactorizar aún (siguiente fase)
+│   ├── eventos_get_lista.js      ← Sin refactorizar
+│   ├── eventos_get_detalle.js    ← Sin refactorizar
+│   ├── eventos_post.js           ← Sin refactorizar (450 líneas — prioridad alta)
+│   ├── eventos_patch_delete.js   ← Sin refactorizar
+│   ├── usuarios.js               ← Sin refactorizar
+│   ├── notification.routes.js    ← Sin refactorizar
+│   └── analytics.js              ← Sin refactorizar
+│
+├── db/
+│   └── supabase.js               ← Cliente Supabase
+│
+├── tests/
+│   ├── setup.js                  ← NUEVO — inyecta env vars antes de todos los tests
+│   ├── auth.routes.test.js       ← Actualizado — refleja nuevo comportamiento seguro
+│   ├── responsividad.test.js     ← Actualizado — passwords ≥ 8 chars
+│   ├── notification.service.test.js
+│   └── roles.middleware.test.js
+│
+└── frontend/src/
+    ├── App.jsx                   ← Router principal (modificado por el equipo)
+    ├── main.jsx                  ← Entry — importa index.css (Tailwind)
+    ├── index.css                 ← Tailwind + utilidades custom + animaciones
+    │
+    ├── api/                      ← CAPA API UNIFICADA (Axios)
+    │   ├── client.js             ← Axios instance + interceptores JWT + 401 handler
+    │   ├── auth.js               ← authApi: register/login/me/updateMe
+    │   ├── eventos.js            ← eventosApi: CRUD + publicar/cancelar/inscribirse
+    │   ├── usuarios.js           ← usuariosApi: list/get/rol/permisos/delete
+    │   └── analytics.js         ← analyticsApi: overview
+    │
+    ├── context/
+    │   ├── AuthContext.jsx       ← Estado auth + login/logout/register + permisos
+    │   └── ToastContext.jsx      ← Sistema de notificaciones (toast)
+    │
+    ├── components/layout/
+    │   ├── PublicLayout.jsx      ← Navbar + Outlet + Footer para rutas públicas
+    │   ├── AppLayout.jsx         ← Sidebar + TopBar + Outlet para app protegida
+    │   ├── PublicNavbar.jsx      ← Nav responsivo con menú móvil
+    │   ├── PublicFooter.jsx      ← Pie de página
+    │   ├── Sidebar.jsx           ← Navegación lateral de la app
+    │   └── TopBar.jsx            ← Barra superior con user menu
+    │
+    ├── pages/public/             ← Todas implementadas con datos mock
+    │   ├── LandingHomePage.jsx   ← Hero + marquee + stats + features + pricing
+    │   ├── ComoFuncionaPage.jsx
+    │   ├── ProductoPage.jsx
+    │   ├── ExplorarPage.jsx
+    │   ├── EventoPublicoPage.jsx
+    │   ├── PlanesPage.jsx
+    │   └── FAQPage.jsx
+    │
+    └── pages/ (protegidas)
+        ├── AuthPage.jsx          ← Login + Register con panel-swap animation
+        ├── DashboardPage.jsx
+        ├── events/               ← EventsListPage, EventCreatePage, EventDetailPage
+        ├── users/UsersPage.jsx
+        └── settings/SettingsPage.jsx
+```
+
+---
+
+## Historial de cambios
+
+### Sesión 2026-05-12 — Fases 1→4
+
+#### FASE 1 — Security Hardening (completada)
+- `config/env.js`: validación startup, exit(1) en prod si faltan JWT_SECRET / SUPABASE_*
+- `config/security.js`: helmet + CORS enterprise + rate limiters + sanitizeBody
+- `middleware/auth.js`: eliminado fallback hardcodeado del JWT_SECRET
+- `routes/auth.js`: eliminado segundo SECRET; `rol` y `permisos` del body ignorados
+- `index.js`: integrado applySecurity() + authLimiter en /auth
+- `instrument.js`: DSN de Sentry a env var; sendDefaultPii: false
+
+#### FASE 2 — Frontend Stabilization (completada — sin trabajo necesario)
+- El equipo ya implementó todas las páginas (7 públicas + 5 protegidas)
+- Todos los layouts existen (PublicLayout, AppLayout, PublicNavbar, PublicFooter)
+- Build Vite: **0 errores, 0 warnings** después de corregir 1 issue
+- Fix: `SettingsPage.jsx` — dynamic `import('../../api/auth.js')` → static import
+  - Causa: auth.js era importado estáticamente por AuthContext y dinámicamente por Settings
+  - Efecto: Vite no podía code-split el módulo (warning, no error)
+
+#### FASE 3 — API Layer (completada — sin trabajo necesario)
+- La capa `src/api/` con Axios ya estaba unificada por el equipo
+- `src/services/api.js` no existe (era una confusión del análisis inicial)
+- 5 módulos limpios: client.js, auth.js, eventos.js, usuarios.js, analytics.js
+- No hay fetch nativo — todo es Axios con interceptores
+
+#### FASE 4 — Service Layer Backend (parcialmente completada)
+**Implementado:**
+- `validators/auth.validator.js`: validateRegister / validateLogin / validateUpdateMe
+- `validators/evento.validator.js`: validateCrear / validatePublicar / validateActualizar
+- `services/auth.service.js`: register / login / getProfile / updateProfile
+- `routes/auth.js`: refactorizado — usa auth.service + auth.validator (route delgada)
+- `tests/setup.js`: env vars globales para Jest (elimina warnings en tests)
+- `tests/auth.routes.test.js`: actualizado para reflejar comportamiento seguro
+- `tests/responsividad.test.js`: passwords actualizados a ≥ 8 chars
+- `package.json` jest config: setupFiles + coverageFrom expandido
+
+**Pendiente (próxima sesión):**
+- `services/evento.service.js`: extraer lógica de eventos_post.js (450 líneas)
+- `services/usuario.service.js`: extraer lógica de usuarios.js
+- Refactorizar rutas de eventos y usuarios para usar sus services
+
+---
+
+## Archivos modificados — sesión actual
+
+```
+Creados:
+  config/env.js
+  config/security.js
+  validators/auth.validator.js
+  validators/evento.validator.js
+  services/auth.service.js
+  tests/setup.js
+  docs/feedback.md
+
+Modificados:
+  middleware/auth.js         (eliminado fallback JWT_SECRET)
+  routes/auth.js             (refactorizado — service + validator)
+  index.js                   (applySecurity + authLimiter)
+  instrument.js              (DSN a env var)
+  package.json               (deps: helmet/rate-limit; jest: setupFiles + coverage)
+  tests/auth.routes.test.js  (comportamiento seguro + passwords ≥8)
+  tests/responsividad.test.js (passwords ≥8)
+  frontend/src/pages/settings/SettingsPage.jsx (dynamic→static import)
+```
+
+---
+
+## Vulnerabilidades corregidas
+
+| # | Vector | Estado |
 |---|---|---|
-| Entry point con seguridad | `index.js` | ✅ Hardened |
-| Config centralizado | `config/env.js` | ✅ Nuevo |
-| Stack de seguridad | `config/security.js` | ✅ Nuevo |
-| Auth JWT (login/register/me/patch) | `routes/auth.js` | ✅ Parcheado |
-| Middleware JWT obligatorio/opcional | `middleware/auth.js` | ✅ Parcheado |
-| RBAC + permisos granulares | `middleware/roles.js` | ✅ Existente |
-| Eventos — CRUD + filtros | `routes/eventos*.js` | ✅ Completo |
-| Usuarios + gestión de roles | `routes/usuarios.js` | ✅ Completo |
-| Notificaciones (memoria) | `services/notification.service.js` | ⚠️ No persistido |
-| Sentry (error tracking) | `instrument.js` | ✅ Parcheado |
-| Tests parciales | `tests/` | ⚠️ Solo auth/notif/roles |
-| Docker | `Dockerfile`, `docker-compose.yml` | ✅ Existente |
-
-### Frontend (`/frontend/src/`)
-| Módulo | Estado |
-|---|---|
-| Design system (tokens.css + global.css) | ✅ Completo |
-| AuthContext + ToastContext | ✅ Completo |
-| API client (Axios + interceptores) | ✅ Completo |
-| AuthPage (login/register panel swap) | ✅ Completo |
-| DashboardPage | ✅ Completo |
-| EventsListPage, EventCreatePage (wizard), EventDetailPage | ✅ Completo |
-| UsersPage, SettingsPage | ✅ Completo |
-| PublicLayout, AppLayout, Navbar, Sidebar | ✅ Completo |
-| Componentes UI base (Badge, Card, Button, Table, etc.) | ✅ Completo |
-| **Páginas públicas** (LandingHomePage, ExplorarPage, etc.) | ❌ NO EXISTEN — app no arranca |
+| JWT_SECRET fallback hardcodeado en middleware/auth.js | ✅ Eliminado |
+| Segundo JWT_SECRET diferente en routes/auth.js | ✅ Eliminado |
+| Registro acepta `rol` y `permisos` del body | ✅ Ignorados. Siempre 'asistente' |
+| Sin helmet (sin headers HTTP de seguridad) | ✅ Activo |
+| Sin rate limiting en auth | ✅ 10 req/15min en /auth |
+| Sentry DSN hardcodeado en código fuente | ✅ Env var SENTRY_DSN |
+| sendDefaultPii: true (envía IPs a Sentry) | ✅ false |
+| Dynamic import mezclado con static en Settings | ✅ Convertido a static |
 
 ---
 
-## Cambios realizados — 2026-05-12
+## Riesgos pendientes
 
-### Sesión: Security Hardening (backend)
-
-#### 1. Instalación de dependencias de seguridad
-```bash
-npm install helmet express-rate-limit
-```
-
-#### 2. `config/env.js` — CREADO
-- Fuente única de verdad para todas las variables de entorno.
-- Valida `JWT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` al arranque.
-- En producción (`NODE_ENV=production`): `process.exit(1)` si falta alguna.
-- En desarrollo: warning visible pero no abortante (facilita onboarding).
-- Exporta todas las vars como constantes tipadas (PORT como int, etc.).
-
-#### 3. `config/security.js` — CREADO
-- Centraliza todo el stack de seguridad HTTP.
-- **Helmet**: headers de seguridad (CSP, X-Frame-Options, X-Content-Type-Options, HSTS en prod, Referrer-Policy).
-- **CORS enterprise**: whitelist por entorno. En producción bloquea peticiones sin `Origin`. Soporta lista de URLs separada por comas en `FRONTEND_URL`.
-- **authLimiter**: 10 intentos / 15 min por IP en rutas de auth. `skipSuccessfulRequests: true` — solo cuenta fallos.
-- **apiLimiter**: 200 req / 15 min por IP en toda la API.
-- **sanitizeBody**: middleware propio que limpia strings del body (trim + strip control chars + truncate a 10k chars). Primera línea de defensa, no sustituye validación de negocio.
-
-#### 4. `middleware/auth.js` — PARCHEADO
-- **Eliminado** el fallback hardcodeado `|| 'eventos_marca_blanca_secret'`.
-- El `JWT_SECRET` ahora viene exclusivamente de `config/env.js`.
-- Añadido mensaje diferenciado para `TokenExpiredError` vs token inválido.
-
-#### 5. `routes/auth.js` — PARCHEADO
-- **Eliminado** el segundo `SECRET` hardcodeado (`gestek_secret_change_in_production`).
-- Ahora usa `JWT_SECRET` y `JWT_EXPIRES` de `config/env.js`.
-- **Registro**: ignora `rol` y `permisos` del body. Todo usuario nace con `rol: 'asistente'`.
-- Añadida validación de email (regex) y contraseña mínima (8 chars) en servidor.
-
-#### 6. `index.js` — REFACTORIZADO
-- `config/env.js` se carga primero (validación de vars antes de montar nada).
-- `applySecurity(app)` aplica todo el stack: helmet + CORS + apiLimiter + sanitizeBody.
-- `authLimiter` aplicado solo en `/auth` (no en toda la API).
-- Socket.IO usa `ALLOWED_ORIGINS` del security config (no duplicación).
-- Socket.IO ahora tiene soporte de rooms por userId (`socket.join('user:${userId}')`).
-- Error handler global añadido para errores CORS.
-
-#### 7. `instrument.js` — PARCHEADO
-- DSN de Sentry movido a `SENTRY_DSN` env var. Si no está configurado, Sentry se deshabilita sin crashear.
-- `sendDefaultPii: false` (era `true` — violación de privacidad por defecto).
-- `tracesSampleRate`: 20% en producción, 100% en desarrollo.
-
----
-
-## Archivos modificados — 2026-05-12
-
-```
-config/env.js              CREADO
-config/security.js         CREADO
-docs/feedback.md           CREADO
-middleware/auth.js         MODIFICADO
-routes/auth.js             MODIFICADO
-index.js                   MODIFICADO
-instrument.js              MODIFICADO
-package.json               MODIFICADO (deps: helmet, express-rate-limit)
-```
-
----
-
-## Riesgos detectados
-
-### Críticos (corregidos hoy)
-| # | Vulnerabilidad | Ubicación | Estado |
+### Altos
+| # | Descripción | Ubicación | Impacto |
 |---|---|---|---|
-| 1 | JWT_SECRET con fallback hardcodeado | `middleware/auth.js:2` | ✅ CORREGIDO |
-| 2 | Segundo SECRET con fallback diferente | `routes/auth.js:9` | ✅ CORREGIDO |
-| 3 | Registro acepta `rol` y `permisos` del body | `routes/auth.js:14` | ✅ CORREGIDO |
-| 4 | Sin helmet (sin headers de seguridad) | `index.js` | ✅ CORREGIDO |
-| 5 | Sin rate limiting en auth | `index.js` | ✅ CORREGIDO |
-| 6 | Sentry DSN hardcodeado en código | `instrument.js` | ✅ CORREGIDO |
-| 7 | `sendDefaultPii: true` por defecto | `instrument.js` | ✅ CORREGIDO |
+| Token JWT en localStorage (XSS) | `frontend/context/AuthContext.jsx` | Session hijacking |
+| Socket.IO broadcast global (notif a todos los clientes) | `services/notification.service.js` | Fuga entre usuarios |
+| Notificaciones en memoria (se pierden en restart) | `services/notification.service.js` | Pérdida de datos |
+| 401 hace redirect duro a /login (pierde estado React) | `frontend/src/api/client.js:24` | UX degradada |
 
-### Altos (pendientes)
-| # | Vulnerabilidad | Ubicación | Impacto |
-|---|---|---|---|
-| 8 | Token JWT en localStorage (XSS) | `frontend/context/AuthContext.jsx` | Session hijacking |
-| 9 | Socket.IO broadcast global (todas las notif a todos los clientes) | `services/notification.service.js` | Leak de datos entre usuarios |
-| 10 | Sin HTTPS enforcement en producción | Infraestructura | MITM |
-
-### Medios (pendientes)
-| # | Vulnerabilidad | Ubicación | Impacto |
-|---|---|---|---|
-| 11 | Sin refresh tokens (JWT fijo 8h sin revocación) | `routes/auth.js:103` | Token robado válido 8h |
-| 12 | Sin Row Level Security en Supabase | Base de datos | Fuga cross-org si hay bug en WHERE |
-| 13 | Sin índices en BD (nombre, fecha, estado, ciudad) | Supabase | Full table scan con >50k eventos |
-| 14 | GET /eventos/:id/asistentes sin paginación | `routes/eventos_patch_delete.js` | Payload >8MB con 10k asistentes |
+### Medios
+| # | Descripción | Ubicación |
+|---|---|---|
+| Sin refresh tokens (JWT fijo 8h sin revocación) | `services/auth.service.js` |
+| Sin Row Level Security en Supabase | Base de datos |
+| Sin índices en BD (nombre, fecha_inicio, estado, ciudad) | Supabase |
+| GET /eventos/:id/asistentes sin paginación | `routes/eventos_patch_delete.js` |
+| eventos_post.js: 450 líneas de negocio en una sola función | `routes/eventos_post.js` |
 
 ---
 
@@ -151,124 +214,74 @@ package.json               MODIFICADO (deps: helmet, express-rate-limit)
 
 | Decisión | Justificación | Fecha |
 |---|---|---|
-| `process.exit(1)` solo en producción si falta JWT_SECRET | Permite desarrollo sin .env completo, pero blinda producción. Tradeoff velocidad dev vs seguridad prod. | 2026-05-12 |
-| `rol: 'asistente'` siempre en registro, ignorar body | Principio de menor privilegio. Admin asigna roles explícitamente después. | 2026-05-12 |
-| Rate limiter solo en `/auth`, no en toda la API | `/auth` es el endpoint de mayor riesgo (brute force). API general tiene límite más alto (200/15min). | 2026-05-12 |
-| Sanitización propia (sin express-validator) | Evitar dependencia extra para limpieza básica. express-validator queda para cuando se implemente validación de esquema completa. | 2026-05-12 |
-| CORS bloquea peticiones sin Origin en producción | Curl/Postman sin Origin → error en prod. En dev se permiten para facilitar testing. | 2026-05-12 |
-| Sentry deshabilitado si no hay SENTRY_DSN | No crashear si no está configurado. Mejor: funciona o no funciona, nunca a medias. | 2026-05-12 |
-| localStorage para JWT (frontend) | Decisión del equipo. Aceptable para prototipo. Para producción: migrar a HttpOnly cookie. Requiere cambio en backend + frontend. | 2026-05-12 |
+| Validators retornan `{status, error} \| null` | Patrón simple sin excepciones. El route lee el null para continuar o el objeto para responder. Sin overhead de try/catch en lógica de validación. | 2026-05-12 |
+| Services retornan `{ok, data} \| {ok, status, error}` | El controller decide el status HTTP. El service no sabe de HTTP. | 2026-05-12 |
+| `rol` del body ignorado silenciosamente en register | Más seguro que retornar 400. El usuario no sabe que el campo existe. Menor surface de attack. | 2026-05-12 |
+| Tests con setup.js en lugar de .env.test | Centraliza env de test. No depende de archivo externo. Compatible con CI. | 2026-05-12 |
+| Frontend usa Tailwind + index.css (no tokens.css) | Decisión del equipo. No forzar design system propio sobre Tailwind ya configurado. Respetar lo existente. | 2026-05-12 |
+| `src/api/` como capa única (no src/services/api.js) | El equipo ya lo implementó correctamente. No duplicar. | 2026-05-12 |
 
 ---
 
-## Arquitectura actual
+## Próximos pasos recomendados
 
-```
-index.js
-  ├── instrument.js          (Sentry — debe ser primero)
-  ├── config/env.js          (validación de vars — debe ser segundo)
-  ├── config/security.js     (helmet + CORS + rate limit + sanitize)
-  │     └── applySecurity(app)
-  ├── routes/auth.js         (authLimiter aplicado aquí)
-  ├── routes/eventos*.js
-  ├── routes/usuarios.js
-  ├── routes/notification.routes.js
-  ├── routes/analytics.js
-  └── routes/notificaciones.js
+### Prioridad inmediata (próxima sesión)
+1. **`services/evento.service.js`** — Extraer lógica de `routes/eventos_post.js` (450 líneas en 1 función). Mayor ROI de la refactorización.
+2. **Scopear Socket.IO por userId** — `io.emit()` → `io.to('user:${userId}').emit()`. Fix de 5 líneas con impacto alto.
+3. **Migrar notificaciones a Supabase** — `services/notification.service.js` guarda en memoria. Tabla `notifications` en Supabase. Incluye marcado de leída persistente.
 
-middleware/
-  ├── auth.js                (JWT verify — usa config/env.js)
-  └── roles.js               (RBAC + permisos granulares)
+### Prioridad alta (sprint 2)
+4. Schema de BD documentado — `docs/schema.md` con ER diagram
+5. Índices PostgreSQL — nombre, fecha_inicio, estado, ciudad
+6. Paginación en GET /eventos/:id/asistentes
+7. Soft-delete en eventos y usuarios
+8. Tests para eventos y usuarios (coverage actual ~40%)
 
-services/
-  └── notification.service.js (singleton en memoria — pendiente migrar a Supabase)
-
-db/
-  └── supabase.js
-```
-
-**Problema arquitectónico principal**: Todo el negocio sigue en rutas (validators + logic + DB query). Falta capa de servicios.
+### Prioridad media (sprint 3)
+9. Refresh tokens (access 15min + refresh 30d)
+10. Row Level Security en Supabase
+11. Code splitting con React.lazy en App.jsx
+12. `services/usuario.service.js`
 
 ---
 
-## Próximos pasos
+## TODO pendiente
 
-### Prioridad INMEDIATA (antes del próximo demo)
-1. **Crear páginas públicas faltantes** — App.jsx importa 7 páginas que no existen. El frontend no arranca.
-   - `src/pages/public/LandingHomePage.jsx`
-   - `src/pages/public/ComoFuncionaPage.jsx`
-   - `src/pages/public/ProductoPage.jsx`
-   - `src/pages/public/ExplorarPage.jsx`
-   - `src/pages/public/EventoPublicoPage.jsx`
-   - `src/pages/public/PlanesPage.jsx`
-   - `src/pages/public/FAQPage.jsx`
-   - `src/components/layout/PublicNavbar.jsx` (si falta)
-   - `src/components/layout/Footer.jsx` (si falta)
-2. **Unificar API layer frontend** — existe `src/api/` (Axios) Y `src/services/api.js` (fetch). Elegir uno y borrar el otro.
-
-### Prioridad ALTA (sprint 2)
-3. Notificaciones persistidas en Supabase (no memoria)
-4. Socket.IO scoped por userId (`io.to('user:${userId}').emit()`)
-5. Paginación en GET /eventos/:id/asistentes
-6. Índices de BD en Supabase (nombre, fecha_inicio, estado, ciudad)
-7. Schema de BD documentado (`docs/schema.md`) con diagrama ER
-
-### Prioridad MEDIA (sprint 3)
-8. Refresh tokens (access 15min + refresh 30d HttpOnly cookie)
-9. Row Level Security en Supabase
-10. Code splitting con React.lazy en App.jsx
-11. Tests para rutas de eventos (crear, publicar, inscribir)
-
-### Prioridad BAJA (post-MVP)
-12. Capa de servicios (extraer lógica de rutas a `services/`)
-13. API versioning `/v1/`
-14. Logging estructurado con Pino
-15. Message queue con BullMQ para emails y push
-16. OpenAPI/Swagger
-
----
-
-## TODO
-
-- [ ] Crear páginas públicas faltantes (frontend no arranca sin ellas)
-- [ ] Unificar `src/api/` vs `src/services/api.js`
-- [ ] Configurar `JWT_SECRET` en `.env` de todos los desarrolladores
-- [ ] Configurar `SENTRY_DSN` en `.env` (mover del código)
-- [ ] Añadir `FRONTEND_URL` en `.env` de producción
+- [ ] `services/evento.service.js` — refactorizar eventos_post.js
+- [ ] Socket.IO rooms por userId (`io.to('user:${id}').emit()`)
 - [ ] Migrar notificaciones de memoria a Supabase
-- [ ] Scopear Socket.IO por userId
-- [ ] Documentar schema de BD en `docs/schema.md`
+- [ ] Documentar schema BD en `docs/schema.md`
+- [ ] Índices Supabase (nombre, fecha_inicio, estado, ciudad)
 - [ ] Paginación en endpoint de asistentes
-- [ ] Índices en Supabase
-- [ ] Tests para endpoints de eventos
-- [ ] Refresh token rotation
-- [ ] RLS en Supabase
+- [ ] Tests para rutas de eventos (crear, publicar, inscribir)
+- [ ] Configurar `JWT_SECRET` en .env de todos los devs (mínimo 32 chars)
+- [ ] Configurar `SENTRY_DSN` en .env (mover del código)
+- [ ] Añadir `FRONTEND_URL` en .env de producción
 
 ---
 
 ## Deuda técnica
 
-| Área | Descripción | Severidad | Esfuerzo |
+| Área | Descripción | Severidad | Esfuerzo estimado |
 |---|---|---|---|
-| Arquitectura | No hay capa de servicios — lógica en rutas | Alta | 1 semana |
+| Backend | eventos_post.js: 450 líneas de negocio en ruta | Alta | 1 día |
+| Backend | Sin capa service para eventos y usuarios | Alta | 2 días |
 | BD | Sin migraciones versionadas | Alta | 2 días |
 | BD | Sin índices | Alta | 4 horas |
 | Auth | Sin refresh tokens | Media | 2 días |
 | Auth | JWT en localStorage (XSS) | Media | 2 días |
 | Notificaciones | En memoria, se pierden en restart | Media | 1 día |
-| Frontend | Dos sistemas de API paralelos | Media | 2 horas |
-| Frontend | Sin code splitting | Baja | 3 horas |
-| Testing | Cobertura <30% — faltan eventos y usuarios | Alta | 3 días |
-| Logging | Solo console.error — sin trace IDs | Media | 1 día |
-| Multi-tenancy | Sin RLS — aislamiento solo a nivel app | Alta | 2 días |
+| Testing | Coverage <40% — faltan eventos y usuarios | Alta | 3 días |
+| Multi-tenancy | Sin RLS — solo filtros de aplicación | Alta | 2 días |
+| Frontend | Sin code splitting (1 bundle ~386KB) | Baja | 3 horas |
 
 ---
 
-## Variables de entorno requeridas
+## Variables de entorno
 
 ```env
-# OBLIGATORIAS — servidor no arranca en producción sin estas
-JWT_SECRET=<cadena_aleatoria_segura_min_32_chars>
+# OBLIGATORIAS en producción (exit(1) si faltan)
+JWT_SECRET=<cadena aleatoria mínimo 32 chars>
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_KEY=<service_role_key>
 
@@ -292,4 +305,18 @@ VAPID_SUBJECT=mailto:admin@gestek.com
 
 ---
 
-*Última actualización: 2026-05-12 | Autor: Claude Code + Misael Gallo*
+## Resumen de cobertura de tests
+
+| Suite | Tests | Estado |
+|---|---|---|
+| auth.routes.test.js | 17 | ✅ Todos pasan |
+| responsividad.test.js | 13 | ✅ Todos pasan |
+| notification.service.test.js | 16 | ✅ Todos pasan |
+| roles.middleware.test.js | 27 | ✅ Todos pasan |
+| **Total** | **73** | **✅ 73/73** |
+
+Cobertura NOT cubierta: eventos CRUD, usuarios, analytics, validators.
+
+---
+
+*Última actualización: 2026-05-12 | Responsable: Claude Code + Misael Gallo*

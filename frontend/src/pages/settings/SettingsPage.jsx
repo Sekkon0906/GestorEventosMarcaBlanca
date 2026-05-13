@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import { authApi } from '../../api/auth.js';
 
 const TABS = [
   { label: 'Perfil',       icon: UserIcon       },
@@ -34,7 +35,6 @@ export default function SettingsPage() {
 
     setLoading(true);
     try {
-      const { authApi } = await import('../../api/auth.js');
       await authApi.updateMe(updates);
       await refreshMe();
       success('Perfil actualizado correctamente.');

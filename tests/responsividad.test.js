@@ -82,14 +82,14 @@ describe('Content-Type — todos los endpoints retornan JSON', () => {
   it('POST /auth/register retorna application/json', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ nombre: 'Test', email: 't@test.com', password: '1234' });
+      .send({ nombre: 'Test', email: 't@test.com', password: '12345678' });
 
     expect(res.headers['content-type']).toMatch(/application\/json/);
   });
 
   it('POST /auth/login retorna application/json', async () => {
-    await request(app).post('/auth/register').send({ nombre: 'Test', email: 'login@test.com', password: '1234' });
-    const res = await request(app).post('/auth/login').send({ email: 'login@test.com', password: '1234' });
+    await request(app).post('/auth/register').send({ nombre: 'Test', email: 'login@test.com', password: '12345678' });
+    const res = await request(app).post('/auth/login').send({ email: 'login@test.com', password: '12345678' });
     expect(res.headers['content-type']).toMatch(/application\/json/);
   });
 
@@ -116,7 +116,7 @@ describe('CORS — headers para clientes mobile y web', () => {
     const res = await request(app)
       .post('/auth/register')
       .set('Origin', 'http://mi-app-mobile.com')
-      .send({ nombre: 'CORS', email: 'cors@test.com', password: '1234' });
+      .send({ nombre: 'CORS', email: 'cors@test.com', password: '12345678' });
     expect(res.headers['access-control-allow-origin']).toBeDefined();
   });
 });
@@ -128,14 +128,14 @@ describe('Payload — tamaño adecuado para conexiones mobile', () => {
   it('respuesta de register pesa menos de 1KB', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ nombre: 'Payload', email: 'payload@test.com', password: '1234' });
+      .send({ nombre: 'Payload', email: 'payload@test.com', password: '12345678' });
     const bytes = Buffer.byteLength(JSON.stringify(res.body), 'utf8');
     expect(bytes).toBeLessThan(1024);
   });
 
   it('respuesta de login pesa menos de 2KB (incluye JWT)', async () => {
-    await request(app).post('/auth/register').send({ nombre: 'JWT', email: 'jwt@test.com', password: '1234' });
-    const res = await request(app).post('/auth/login').send({ email: 'jwt@test.com', password: '1234' });
+    await request(app).post('/auth/register').send({ nombre: 'JWT', email: 'jwt@test.com', password: '12345678' });
+    const res = await request(app).post('/auth/login').send({ email: 'jwt@test.com', password: '12345678' });
     const bytes = Buffer.byteLength(JSON.stringify(res.body), 'utf8');
     expect(bytes).toBeLessThan(2048);
   });
@@ -153,14 +153,14 @@ describe('Tiempo de respuesta — usabilidad en mobile', () => {
 
   it('POST /auth/register responde en menos de 300ms', async () => {
     const inicio = Date.now();
-    await request(app).post('/auth/register').send({ nombre: 'Speed', email: 'speed@test.com', password: '1234' });
+    await request(app).post('/auth/register').send({ nombre: 'Speed', email: 'speed@test.com', password: '12345678' });
     expect(Date.now() - inicio).toBeLessThan(300);
   });
 
   it('POST /auth/login responde en menos de 300ms', async () => {
-    await request(app).post('/auth/register').send({ nombre: 'Speed2', email: 'speed2@test.com', password: '1234' });
+    await request(app).post('/auth/register').send({ nombre: 'Speed2', email: 'speed2@test.com', password: '12345678' });
     const inicio = Date.now();
-    await request(app).post('/auth/login').send({ email: 'speed2@test.com', password: '1234' });
+    await request(app).post('/auth/login').send({ email: 'speed2@test.com', password: '12345678' });
     expect(Date.now() - inicio).toBeLessThan(300);
   });
 });
@@ -172,7 +172,7 @@ describe('Estructura de respuesta — apta para apps mobile', () => {
   it('register retorna campos esenciales para mostrar en UI mobile', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ nombre: 'UI', email: 'ui@test.com', password: '1234' });
+      .send({ nombre: 'UI', email: 'ui@test.com', password: '12345678' });
 
     expect(res.body).toHaveProperty('mensaje');
     expect(res.body).toHaveProperty('usuario');
@@ -183,8 +183,8 @@ describe('Estructura de respuesta — apta para apps mobile', () => {
   });
 
   it('login retorna token + usuario para almacenar en app mobile', async () => {
-    await request(app).post('/auth/register').send({ nombre: 'App', email: 'app@test.com', password: '1234' });
-    const res = await request(app).post('/auth/login').send({ email: 'app@test.com', password: '1234' });
+    await request(app).post('/auth/register').send({ nombre: 'App', email: 'app@test.com', password: '12345678' });
+    const res = await request(app).post('/auth/login').send({ email: 'app@test.com', password: '12345678' });
 
     expect(res.body).toHaveProperty('token');
     expect(res.body).toHaveProperty('usuario');
@@ -202,7 +202,7 @@ describe('Estructura de respuesta — apta para apps mobile', () => {
   it('password nunca aparece en la respuesta de register', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ nombre: 'Seguro', email: 'seguro@test.com', password: 'secreto' });
+      .send({ nombre: 'Seguro', email: 'seguro@test.com', password: 'secreto123' });
 
     expect(JSON.stringify(res.body)).not.toContain('secreto');
     expect(res.body.usuario).not.toHaveProperty('password');
