@@ -20,6 +20,7 @@ import EventCreatePage    from './pages/events/EventCreatePage.jsx';
 import EventDetailPage    from './pages/events/EventDetailPage.jsx';
 import UsersPage          from './pages/users/UsersPage.jsx';
 import SettingsPage       from './pages/settings/SettingsPage.jsx';
+import AnalyticsPage      from './pages/AnalyticsPage.jsx';
 
 function PrivateRoute({ children }) {
   const { token } = useAuth();
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="/eventos/nuevo"    element={<EventCreatePage />} />
               <Route path="/eventos/:id"      element={<EventDetailPage />} />
               <Route path="/usuarios"         element={<UsersPage />} />
+              <Route path="/analytics"        element={<AnalyticsPage />} />
               <Route path="/configuracion"    element={<SettingsPage />} />
             </Route>
 

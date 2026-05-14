@@ -65,4 +65,44 @@ router.get('/mas-vistos', verificarToken, (req, res) => {
   });
 });
 
+// GET /analytics/exportar-csv — exportar asistentes de todos los eventos
+router.get('/exportar-csv', verificarToken, (req, res) => {
+  const eventos = getEventos ? getEventos() : [];
+
+  // Cabecera del CSV
+  let csv = 'Evento,Fecha,Lugar,Asistente,Email,Registrado_En\n';
+
+  eventos.forEach(e => {
+    if (e.asistentes && e.asistentes.length > 0) {
+      e.asistentes.forEach(a => {
+        csv += `"${e.nombre}","${e.fecha}","${e.lugar || ''}","${a.nombre}","${a.email}","${a.id || ''}"\n`;
+      });
+    }
+  });
+
+  // Devolver como archivo descargable
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="asistentes-gestek.csv"');
+  res.send('﻿' + csv); // BOM para que Excel lo abra bien
+});
+
+// GET /analytics/exportar-csv/:id — exportar asistentes de un evento especifico
+router.get('/exportar-csv/:id', verificarToken, (req, res) => {
+  const eventos = getEventos ? getEventos() : [];
+  const evento = eventos.find(e => e.id == req.params.id);
+
+  if (!evento) {
+    return res.status(404).json({ error: 'Evento no encontrado.' });
+  }
+
+  let csv = 'Nombre,Email\n';
+  (evento.asistentes || []).forEach(a => {
+    csv += `"${a.nombre}","${a.email}"\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="asistentes-${evento.nombre}.csv"`);
+  res.send('﻿' + csv);
+});
+
 module.exports = router;

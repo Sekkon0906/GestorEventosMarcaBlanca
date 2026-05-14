@@ -1,10 +1,10 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+// RONALD TIENE DEBE AGREGAR LA URL Y KEY EN EL .ENV PARA QUE FUNCIONE EL SUPABASE
+// Sin las credenciales el servidor igual arranca, pero login/register no funcionan
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || 'placeholder-key';
 
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-//RONALD TIENE DEBE AGREGAR LA URL Y KEY EN EL .ENV PARA QUE FUNCIONE EL SUPABASE, SI NO LO HACE NO FUNCIONARA NADA DE LO RELACIONADO CON LA BASE DE DATOS
 module.exports = supabase;
