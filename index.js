@@ -32,6 +32,8 @@ app.use('/eventos',           require('./routes/eventos_patch_delete'));
 app.use('/usuarios',          require('./routes/usuarios'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/analytics',     require('./routes/analytics'));
+app.use('/qr',                require('./routes/qr'));
+app.use('/gamificacion',      require('./routes/gamificacion'));
 app.use('/notificaciones',    require('./routes/notificaciones'));
 
 // ── Socket.IO (activar con ENABLE_SOCKETS=true en .env) ─────

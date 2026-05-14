@@ -21,6 +21,9 @@ import EventDetailPage    from './pages/events/EventDetailPage.jsx';
 import UsersPage          from './pages/users/UsersPage.jsx';
 import SettingsPage       from './pages/settings/SettingsPage.jsx';
 import AnalyticsPage      from './pages/AnalyticsPage.jsx';
+import ScanPage           from './pages/ScanPage.jsx';
+import GamificacionPage   from './pages/GamificacionPage.jsx';
+import MapaEventoPage     from './pages/MapaEventoPage.jsx';
 
 function PrivateRoute({ children }) {
   const { token } = useAuth();
@@ -62,6 +65,9 @@ export default function App() {
               <Route path="/eventos/:id"      element={<EventDetailPage />} />
               <Route path="/usuarios"         element={<UsersPage />} />
               <Route path="/analytics"        element={<AnalyticsPage />} />
+              <Route path="/scan"             element={<ScanPage />} />
+              <Route path="/gamificacion"     element={<GamificacionPage />} />
+              <Route path="/mapa"             element={<MapaEventoPage />} />
               <Route path="/configuracion"    element={<SettingsPage />} />
             </Route>
 
