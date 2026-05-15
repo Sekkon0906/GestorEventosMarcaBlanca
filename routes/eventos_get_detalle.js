@@ -217,7 +217,7 @@ router.get('/:id', verificarTokenOpcional, async (req, res) => {
     return res.json({ evento: respuesta });
 
   } catch (err) {
-    console.error('❌ Error en GET /eventos/:id:', err.message);
+    console.error('Error en GET /eventos/:id:', err.message);
     return res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
