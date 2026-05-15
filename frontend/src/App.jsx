@@ -17,7 +17,8 @@ import AuthPage           from './pages/AuthPage.jsx';
 import DashboardPage      from './pages/DashboardPage.jsx';
 import EventsListPage     from './pages/events/EventsListPage.jsx';
 import EventCreatePage    from './pages/events/EventCreatePage.jsx';
-import EventDetailPage    from './pages/events/EventDetailPage.jsx';
+import EventDetailPage          from './pages/events/EventDetailPage.jsx';
+import OrganizerDashboardPage   from './pages/events/OrganizerDashboardPage.jsx';
 import UsersPage          from './pages/users/UsersPage.jsx';
 import SettingsPage       from './pages/settings/SettingsPage.jsx';
 
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/eventos"          element={<EventsListPage />} />
               <Route path="/eventos/nuevo"    element={<EventCreatePage />} />
               <Route path="/eventos/:id"      element={<EventDetailPage />} />
+              <Route path="/eventos/:id/organizar" element={<OrganizerDashboardPage />} />
               <Route path="/usuarios"         element={<UsersPage />} />
               <Route path="/configuracion"    element={<SettingsPage />} />
             </Route>
