@@ -3,20 +3,24 @@ import { supabase, supabaseConfigured, authRedirect } from '../lib/supabase.js';
 
 const AuthContext = createContext(null);
 
-/* Convierte un user de Supabase + metadata en el shape que usa el resto de la app. */
+/* Convierte un user de Supabase + metadata en el shape que usa el resto de la app.
+   Incluye los nombres de campo que envía Google OAuth (full_name, name, picture, avatar_url). */
 function mapUser(user) {
   if (!user) return null;
   const meta = user.user_metadata || {};
   return {
     id     : user.id,
     email  : user.email,
-    nombre : meta.nombre || meta.name || user.email,
+    nombre : meta.nombre || meta.full_name || meta.name || user.email,
     rol    : meta.rol    || 'organizador',
-    foto   : meta.foto   || null,
+    foto   : meta.foto   || meta.avatar_url || meta.picture || null,
     ocupacion: meta.ocupacion || null,
     empresa  : meta.empresa   || null,
     ciudad   : meta.ciudad    || null,
     telefono : meta.telefono  || null,
+    contexto : meta.contexto  || null,
+    participantes: meta.participantes || null,
+    perfilCompleto: meta.perfil_completo === true,
     permisos : meta.permisos  || [],
     emailConfirmado: Boolean(user.email_confirmed_at),
     raw    : user,
@@ -28,15 +32,34 @@ export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* Inicializar: leer sesión actual y suscribirse a cambios. */
+  /* Inicializar: si volvemos de OAuth con ?code= en URL, lo intercambiamos
+     por sesión explícitamente. Luego leemos la sesión y nos suscribimos. */
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
+
+    (async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          const code = url.searchParams.get('code');
+          if (code) {
+            await supabase.auth.exchangeCodeForSession(window.location.href);
+            /* Limpia ?code y ?state del URL sin recargar */
+            url.searchParams.delete('code');
+            url.searchParams.delete('state');
+            window.history.replaceState({}, document.title, url.pathname + (url.search || '') + url.hash);
+          }
+        }
+      } catch (e) {
+        console.warn('[auth] exchangeCodeForSession falló:', e?.message || e);
+      }
+
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       setSession(data.session ?? null);
       setUsuario(mapUser(data.session?.user));
       setLoading(false);
-    });
+    })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess ?? null);
@@ -67,6 +90,7 @@ export function AuthProvider({ children }) {
         data: {
           nombre,
           rol: 'organizador',
+          perfil_completo: true,
           ...metadata,
         },
       },
@@ -79,6 +103,16 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
     setSession(null);
     setUsuario(null);
+  }, []);
+
+  const signInWithGoogle = useCallback(async () => {
+    if (!supabaseConfigured) return { ok: false, error: 'Supabase no está configurado.' };
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: authRedirect('/dashboard') },
+    });
+    if (error) return { ok: false, error: traducirError(error.message) };
+    return { ok: true };
   }, []);
 
   const resetPassword = useCallback(async (email) => {
@@ -133,7 +167,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       token, session, usuario, loading,
-      login, register, logout,
+      login, register, logout, signInWithGoogle,
       resetPassword, updatePassword, updateProfile, resendConfirmation,
       hasPermiso, hasRol,
     }}>

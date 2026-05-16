@@ -81,10 +81,10 @@ export default function EventsListPage() {
   return (
     <div className="space-y-5 animate-[fadeUp_0.4s_ease_both]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold font-display text-text-1">Eventos</h1>
-          <p className="text-sm text-text-2 mt-0.5">
+          <h1 className="text-3xl sm:text-4xl font-bold font-display text-text-1 tracking-tight">Eventos</h1>
+          <p className="text-base text-text-2 mt-1">
             {loading ? 'Cargando...' : `${total} evento${total !== 1 ? 's' : ''} en total`}
           </p>
         </div>
@@ -176,8 +176,8 @@ export default function EventsListPage() {
           )}
         />
       ) : view === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {eventos.map(ev => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {eventos.map((ev, i) => (
             <EventCard
               key={ev.id}
               evento={ev}
@@ -185,6 +185,7 @@ export default function EventsListPage() {
               onDelete={hasPermiso('eventos:eliminar') ? handleDelete : null}
               canEdit={hasPermiso('eventos:editar')}
               canDelete={hasPermiso('eventos:eliminar')}
+              style={{ animationDelay: `${Math.min(i * 60, 400)}ms` }}
             />
           ))}
         </div>
@@ -207,7 +208,7 @@ export default function EventsListPage() {
                   <tr key={ev.id} className="tr">
                     <td className="td">
                       <Link to={`/eventos/${ev.id}`} className="font-medium text-text-1 hover:text-primary transition-colors">
-                        {ev.nombre}
+                        {ev.titulo}
                       </Link>
                       {ev.descripcion && (
                         <p className="text-xs text-text-3 mt-0.5 line-clamp-1">{ev.descripcion}</p>
@@ -221,11 +222,11 @@ export default function EventsListPage() {
                     <td className="td hidden lg:table-cell"><ModalidadBadge modalidad={ev.modalidad} /></td>
                     <td className="td"><EstadoBadge estado={ev.estado} /></td>
                     <td className="td hidden lg:table-cell text-text-2 text-sm">
-                      {ev.asistentes_count || 0}{ev.capacidad_total ? ` / ${ev.capacidad_total}` : ''}
+                      {ev.aforo_vendido || 0}{ev.aforo_total ? ` / ${ev.aforo_total}` : ''}
                     </td>
                     <td className="td text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Link to={`/eventos/${ev.id}`} className="btn btn-ghost btn-sm">Ver</Link>
+                        <Link to={`/eventos/${ev.id}`} className="btn btn-ghost btn-sm">Administrar</Link>
                         {hasPermiso('eventos:publicar') && ev.estado === 'borrador' && (
                           <button onClick={() => handlePublicar(ev.id)} className="btn btn-ghost btn-sm text-success">
                             Publicar
@@ -233,7 +234,7 @@ export default function EventsListPage() {
                         )}
                         {hasPermiso('eventos:eliminar') && (
                           <button
-                            onClick={() => handleDelete(ev.id, ev.nombre)}
+                            onClick={() => handleDelete(ev.id, ev.titulo)}
                             disabled={deleting === ev.id}
                             className="btn btn-ghost btn-sm text-danger"
                           >

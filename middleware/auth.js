@@ -1,35 +1,28 @@
-const jwt    = require('jsonwebtoken');
-const SECRET = process.env.JWT_SECRET || 'eventos_marca_blanca_secret';
+/* Middleware: valida el access_token de Supabase Auth.
+   El front lo manda en Authorization: Bearer <token>.
+   Si es válido, deja req.user = { id, email, ... } y sigue. */
+const supabase = require('../lib/supabase.js');
 
-const verificarToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token      = authHeader && authHeader.split(' ')[1];
+async function verifySupabaseJWT(req, res, next) {
+  const header = req.headers['authorization'] || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Token requerido.' });
-  try {
-    req.usuario = jwt.verify(token, SECRET);
-    next();
-  } catch {
-    res.status(403).json({ error: 'Token inválido.' });
-  }
-};
 
-const verificarTokenOpcional = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token      = authHeader && authHeader.split(' ')[1];
-  if (!token) { req.usuario = null; return next(); }
-  try {
-    req.usuario = jwt.verify(token, SECRET);
-    next();
-  } catch {
-    req.usuario = null;
-    next();
-  }
-};
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return res.status(401).json({ error: 'Token inválido o expirado.' });
 
-// Esta parte es la clave:
-// 1. Exportamos las funciones por su nombre
-// 2. Exportamos verificarToken por defecto para las rutas que hacen require('../middleware/auth') a secas.
-verificarToken.verificarToken = verificarToken;
-verificarToken.verificarTokenOpcional = verificarTokenOpcional;
+  req.user = data.user;
+  next();
+}
 
-module.exports = verificarToken;
+/* Igual al anterior pero no bloquea si no hay token (rutas mixtas). */
+async function verifySupabaseJWTOptional(req, _res, next) {
+  const header = req.headers['authorization'] || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) { req.user = null; return next(); }
+  const { data } = await supabase.auth.getUser(token);
+  req.user = data?.user ?? null;
+  next();
+}
+
+module.exports = { verifySupabaseJWT, verifySupabaseJWTOptional };

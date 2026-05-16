@@ -5,44 +5,70 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { EstadoBadge, ModalidadBadge } from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import GLoader from '../../components/ui/GLoader.jsx';
+
+import ResumenTab        from './tabs/ResumenTab.jsx';
+import PaginaPublicaTab  from './tabs/PaginaPublicaTab.jsx';
+import EquipoTab         from './tabs/EquipoTab.jsx';
+import TicketsTab        from './tabs/TicketsTab.jsx';
+import ClientesTab       from './tabs/ClientesTab.jsx';
+import CheckinTab        from './tabs/CheckinTab.jsx';
+import ChatTab           from './tabs/ChatTab.jsx';
+import AgendaTab         from './tabs/AgendaTab.jsx';
+import TareasTab         from './tabs/TareasTab.jsx';
+import AnalyticsTab      from './tabs/AnalyticsTab.jsx';
+import BroadcastModal    from './BroadcastModal.jsx';
+import PlaceholderTab    from './tabs/PlaceholderTab.jsx';
+
+/* Workspace por evento. Header + tabs. Cada tab carga su contenido. */
+
+const TABS = [
+  { id: 'resumen',  label: 'Resumen' },
+  { id: 'publica',  label: 'Página pública' },
+  { id: 'equipo',   label: 'Equipo y roles' },
+  { id: 'chat',     label: 'Chat' },
+  { id: 'tickets',  label: 'Tickets' },
+  { id: 'agenda',   label: 'Agenda' },
+  { id: 'tareas',   label: 'Tareas' },
+  { id: 'gente',    label: 'Clientes' },
+  { id: 'checkin',  label: 'Check-in' },
+  { id: 'pagos',    label: 'Pagos' },
+  { id: 'analytics',label: 'Analytics' },
+];
 
 export default function EventDetailPage() {
-  const { id }               = useParams();
-  const navigate             = useNavigate();
-  const { usuario, hasPermiso } = useAuth();
+  const { id }                       = useParams();
+  const navigate                     = useNavigate();
+  const { usuario, hasPermiso }      = useAuth();
   const { success, error: toastErr } = useToast();
 
-  const [evento,     setEvento]     = useState(null);
-  const [asistentes, setAsistentes] = useState(null);
-  const [loading,    setLoading]    = useState(true);
-  const [working,    setWorking]    = useState(false);
-  const [err,        setErr]        = useState('');
+  const [evento,  setEvento]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [tab,     setTab]     = useState('resumen');
+  const [err,     setErr]     = useState('');
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     eventosApi.get(id)
-      .then(data => setEvento(data.evento || data))
+      .then(data => setEvento(data.evento))
       .catch(e   => setErr(e.message))
       .finally(()=> setLoading(false));
   }, [id]);
 
-  const loadAsistentes = async () => {
-    try {
-      const data = await eventosApi.asistentes(id);
-      setAsistentes(data);
-    } catch (e) { toastErr(e.message); }
+  const reload = async () => {
+    try { const d = await eventosApi.get(id); setEvento(d.evento); } catch {}
   };
 
   const doAction = async (action, confirmMsg) => {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
     setWorking(true);
     try {
-      let data;
-      if (action === 'publicar')   data = await eventosApi.publicar(id);
-      if (action === 'cancelar')   data = await eventosApi.cancelar(id);
-      if (action === 'inscribirse') data = await eventosApi.inscribirse(id);
-      setEvento(prev => ({ ...prev, estado: data.evento?.estado || prev.estado }));
-      success(data.mensaje || 'Acción realizada correctamente.');
+      if (action === 'publicar') await eventosApi.publicar(id);
+      if (action === 'cancelar') await eventosApi.cancelar(id);
+      await reload();
+      success('Acción aplicada.');
     } catch (e) {
       toastErr(e.message);
     } finally {
@@ -63,260 +89,163 @@ export default function EventDetailPage() {
     }
   };
 
-  const fmt = (d) => d
-    ? new Date(d).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '—';
-
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <Spinner size="lg" />
-    </div>
+    <GLoader size="lg" message="Cargando evento..." />
   );
 
   if (!evento) return (
     <div className="max-w-lg mx-auto mt-12 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-danger/10 border border-danger/20 flex items-center justify-center mx-auto mb-4">
-        <svg className="w-7 h-7 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
       <p className="text-text-2 mb-4">{err || 'Evento no encontrado.'}</p>
       <Link to="/eventos" className="btn-secondary">← Volver a eventos</Link>
     </div>
   );
 
-  const esDueno = String(evento.organizador_id) === String(usuario?.id) || usuario?.rol === 'admin_global';
-  const pct     = evento.capacidad_total > 0 ? Math.min(100, Math.round((evento.asistentes_count || 0) / evento.capacidad_total * 100)) : 0;
-  const barColor = pct >= 90 ? 'bg-danger' : pct >= 70 ? 'bg-warning' : 'bg-success';
+  const esDueno = String(evento.owner_id) === String(usuario?.id) || usuario?.rol === 'admin_global';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 animate-[fadeUp_0.4s_ease_both]">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-text-2">
-        <Link to="/eventos" className="hover:text-text-1 transition-colors">Eventos</Link>
-        <ChevronIcon className="w-3 h-3 text-text-3" />
-        <span className="text-text-1 truncate">{evento.nombre}</span>
-      </nav>
+    <div className="max-w-6xl mx-auto space-y-5 animate-[fadeUp_0.4s_ease_both]">
+      {/* HEADER */}
+      <WorkspaceHeader
+        evento={evento}
+        esDueno={esDueno}
+        hasPermiso={hasPermiso}
+        working={working}
+        onPublicar={() => doAction('publicar')}
+        onCancelar={() => doAction('cancelar', '¿Cancelar este evento?')}
+        onDelete={handleDelete}
+        onBroadcast={() => setBroadcastOpen(true)}
+      />
 
-      {/* Header card */}
-      <div className="card overflow-hidden">
-        {evento.imagen_portada ? (
-          <div className="relative h-48 overflow-hidden">
-            <img src={evento.imagen_portada} alt={evento.nombre} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-surface/80 to-transparent" />
-            <div className="absolute bottom-4 left-6 flex gap-2">
+      {/* TABS */}
+      <div className="relative">
+        <div className="flex gap-1 overflow-x-auto no-scrollbar border-b border-border -mx-4 px-4 sm:mx-0 sm:px-0">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`relative px-4 py-3.5 text-[15px] font-medium whitespace-nowrap transition-colors
+                ${tab === t.id ? 'text-text-1' : 'text-text-3 hover:text-text-2'}
+              `}
+            >
+              {t.label}
+              {tab === t.id && (
+                <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-text-1 animate-[fadeIn_0.2s_ease_both]" />
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Gradient fade indicador de scroll horizontal en mobile */}
+        <div className="sm:hidden absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-bg to-transparent pointer-events-none" />
+      </div>
+
+      {/* TAB CONTENT */}
+      <div key={tab} className="animate-[fadeUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]">
+        {tab === 'resumen'   && <ResumenTab evento={evento} />}
+        {tab === 'publica'   && <PaginaPublicaTab evento={evento} />}
+        {tab === 'equipo'    && <EquipoTab evento={evento} />}
+        {tab === 'tickets'   && <TicketsTab evento={evento} />}
+        {tab === 'gente'     && <ClientesTab evento={evento} />}
+        {tab === 'checkin'   && <CheckinTab evento={evento} />}
+        {tab === 'agenda'      && <AgendaTab evento={evento} />}
+        {tab === 'tareas'      && <TareasTab evento={evento} />}
+        {tab === 'pagos'     && <PlaceholderTab title="Pagos" desc="Configura tu llave BRE-B, recibe transacciones, emite reembolsos." icon="wallet" />}
+        {tab === 'chat'      && <ChatTab evento={evento} />}
+        {tab === 'analytics' && <AnalyticsTab evento={evento} />}
+      </div>
+
+      {broadcastOpen && (
+        <BroadcastModal evento={evento} onClose={() => setBroadcastOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+function WorkspaceHeader({ evento, esDueno, hasPermiso, working, onPublicar, onCancelar, onDelete, onBroadcast }) {
+  return (
+    <header className="rounded-3xl border border-border overflow-hidden bg-surface/40">
+      {/* Cover banner */}
+      <div className="relative h-48 sm:h-64 overflow-hidden bg-gradient-to-br from-surface-2 via-surface to-bg">
+        {(evento.cover_url || evento.gallery?.[0]) ? (
+          <img
+            src={evento.cover_url || evento.gallery[0]}
+            alt={evento.titulo}
+            className="absolute inset-0 w-full h-full object-cover scale-105 animate-[fadeIn_0.7s_ease_both]"
+          />
+        ) : (
+          /* Patrón decorativo si no hay cover */
+          <div className="absolute inset-0">
+            <div className="absolute -top-20 left-1/3 w-96 h-96 rounded-full bg-primary/15 blur-3xl" />
+            <div className="absolute -bottom-20 right-1/4 w-96 h-96 rounded-full bg-accent/15 blur-3xl" />
+            <div className="absolute inset-0 opacity-[0.04]"
+              style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='%23ffffff'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e\")" }} />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/70 to-transparent" />
+      </div>
+
+      <div className="px-6 sm:px-8 -mt-12 relative">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
               <EstadoBadge estado={evento.estado} />
               <ModalidadBadge modalidad={evento.modalidad} />
             </div>
-          </div>
-        ) : (
-          <div className="h-20 bg-gradient-primary relative overflow-hidden">
-            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgba(255,255,255,0.1)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e\")" }} />
-          </div>
-        )}
-
-        <div className="card-body">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold font-display text-text-1">{evento.nombre}</h1>
-              {evento.descripcion && <p className="text-sm text-text-2 mt-1 leading-relaxed">{evento.descripcion}</p>}
-            </div>
-            {!evento.imagen_portada && (
-              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <EstadoBadge estado={evento.estado} />
-                <ModalidadBadge modalidad={evento.modalidad} />
-              </div>
+            <h1 className="text-3xl sm:text-4xl font-bold font-display text-text-1 tracking-tight">{evento.titulo}</h1>
+            {evento.descripcion && (
+              <p className="text-base text-text-2 mt-2 max-w-2xl line-clamp-2 leading-relaxed">{evento.descripcion}</p>
             )}
+            <p className="text-sm text-text-3 mt-3 font-mono">
+              /explorar/{evento.slug}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-border">
-            <InfoItem label="Inicio"  value={fmt(evento.fecha_inicio)} />
-            <InfoItem label="Fin"     value={fmt(evento.fecha_fin)}    />
-            {evento.ubicacion?.ciudad && <InfoItem label="Ciudad" value={evento.ubicacion.ciudad} />}
-            {evento.ubicacion?.lugar  && <InfoItem label="Venue"  value={evento.ubicacion.lugar}  />}
-            {evento.ubicacion?.link_streaming && (
-              <InfoItem label="Streaming" value={
-                <a href={evento.ubicacion.link_streaming} target="_blank" rel="noreferrer"
-                  className="text-primary hover:underline text-xs truncate block">
-                  Ver enlace →
-                </a>
-              } />
-            )}
-            <div>
-              <p className="text-xs font-medium text-text-2 mb-1">Capacidad</p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-text-1">
-                  {evento.asistentes_count || 0}{evento.capacidad_total ? ` / ${evento.capacidad_total}` : ''}
-                </span>
-                {evento.capacidad_total > 0 && (
-                  <span className="text-xs text-text-3">({pct}%)</span>
-                )}
-              </div>
-              {evento.capacidad_total > 0 && (
-                <div className="h-1 bg-surface-3 rounded-full mt-1.5 overflow-hidden">
-                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
+          {/* Acciones */}
           {esDueno && (
-            <div className="flex flex-wrap items-center gap-2 mt-5 pt-5 border-t border-border">
+            <div className="flex items-center gap-2 flex-wrap pt-2">
+              {hasPermiso('eventos:editar') && evento.estado !== 'cancelado' && (
+                <Link to={`/eventos/${evento.id}/editar`} className="btn-secondary btn-sm">
+                  <EditIcon className="w-4 h-4" /> Editar info
+                </Link>
+              )}
               {hasPermiso('eventos:publicar') && evento.estado === 'borrador' && (
-                <button onClick={() => doAction('publicar')} disabled={working} className="btn-gradient">
-                  {working ? <Spinner size="sm" /> : <><RocketIcon className="w-4 h-4" /> Publicar evento</>}
+                <button onClick={onPublicar} disabled={working} className="btn-gradient btn-sm">
+                  <RocketIcon className="w-4 h-4" /> Publicar
                 </button>
               )}
-              {hasPermiso('eventos:editar') && evento.estado !== 'cancelado' && (
-                <button onClick={() => doAction('cancelar', '¿Cancelar este evento?')} disabled={working} className="btn-secondary">
-                  Cancelar evento
+              {hasPermiso('eventos:editar') && evento.estado === 'publicado' && (
+                <button onClick={onCancelar} disabled={working} className="btn-secondary btn-sm">
+                  Cancelar
+                </button>
+              )}
+              {evento.estado === 'publicado' && (
+                <button onClick={onBroadcast} className="btn-secondary btn-sm" title="Enviar notificación al equipo del evento (Pro)">
+                  <BellIcon className="w-4 h-4" /> Notificar
                 </button>
               )}
               {hasPermiso('eventos:eliminar') && (
-                <button onClick={handleDelete} disabled={working} className="btn-danger ml-auto">
-                  Eliminar
+                <button onClick={onDelete} disabled={working} className="btn-ghost btn-sm text-danger/80 hover:text-danger" aria-label="Eliminar">
+                  <TrashIcon className="w-4 h-4" />
                 </button>
               )}
             </div>
           )}
-
-          {!esDueno && evento.estado === 'publicado' && (
-            <div className="mt-5 pt-5 border-t border-border">
-              <button onClick={() => doAction('inscribirse')} disabled={working} className="btn-gradient">
-                {working ? <Spinner size="sm" /> : 'Inscribirme a este evento'}
-              </button>
-            </div>
-          )}
         </div>
+
+        <div className="h-6" />
       </div>
-
-      {/* Entradas */}
-      {evento.entradas?.length > 0 && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-sm font-semibold text-text-1">Entradas disponibles</h3>
-          </div>
-          <div className="divide-y divide-border">
-            {evento.entradas.map((e, i) => (
-              <div key={i} className="px-6 py-4 flex items-center justify-between hover:bg-surface-2/40 transition-colors">
-                <div>
-                  <p className="text-sm font-medium text-text-1">{e.tipo}</p>
-                  {e.descripcion && <p className="text-xs text-text-2 mt-0.5">{e.descripcion}</p>}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-text-1">
-                    {e.precio === 0 ? <span className="badge-green">Gratis</span> : `$${Number(e.precio).toLocaleString()} ${e.moneda || 'COP'}`}
-                  </p>
-                  <p className="text-xs text-text-2 mt-0.5">{e.disponibles ?? e.capacidad} disponibles</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Speakers */}
-      {evento.speakers?.length > 0 && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-sm font-semibold text-text-1">Speakers</h3>
-            <span className="badge-gray">{evento.speakers.length}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4 p-6">
-            {evento.speakers.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-surface-2 border border-border">
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary/20 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary font-semibold text-sm font-display">{s.nombre?.charAt(0)}</span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-1 truncate">{s.nombre}</p>
-                  <p className="text-xs text-text-2 truncate">{s.cargo}{s.empresa ? ` · ${s.empresa}` : ''}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Asistentes (solo para dueño) */}
-      {esDueno && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-sm font-semibold text-text-1">Asistentes</h3>
-            {!asistentes && (
-              <button onClick={loadAsistentes} className="btn-ghost btn-sm">
-                Cargar lista
-              </button>
-            )}
-          </div>
-
-          {asistentes ? (
-            <>
-              <div className="flex gap-6 px-6 py-4 border-b border-border">
-                <Stat label="Total"       value={asistentes.stats?.total}       />
-                <Stat label="Confirmados" value={asistentes.stats?.confirmados} color="text-success" />
-                <Stat label="Pendientes"  value={asistentes.stats?.pendientes}  color="text-warning" />
-                <Stat label="Cancelados"  value={asistentes.stats?.cancelados}  color="text-danger"  />
-              </div>
-              {asistentes.asistentes?.length === 0 ? (
-                <p className="text-sm text-text-2 text-center py-8">Sin asistentes aún.</p>
-              ) : (
-                <div className="divide-y divide-border max-h-72 overflow-y-auto no-scrollbar">
-                  {asistentes.asistentes.map((a, i) => (
-                    <div key={i} className="flex items-center justify-between px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-surface-3 flex items-center justify-center text-[11px] font-semibold text-text-2 flex-shrink-0">
-                          {a.usuario?.nombre?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                        <div>
-                          <p className="text-sm text-text-1">{a.usuario?.nombre || 'Usuario'}</p>
-                          <p className="text-xs text-text-3">{a.usuario?.email}</p>
-                        </div>
-                      </div>
-                      <span className={`badge text-xs ${
-                        a.estado_registro === 'confirmado' ? 'badge-green' :
-                        a.estado_registro === 'pendiente'  ? 'badge-yellow' : 'badge-red'
-                      }`}>
-                        {a.estado_registro}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-text-2 text-center py-8">
-              Haz clic en "Cargar lista" para ver los asistentes.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
+    </header>
   );
 }
 
-function InfoItem({ label, value }) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-text-2 mb-0.5">{label}</p>
-      <div className="text-sm text-text-1">{value}</div>
-    </div>
-  );
+function BellIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
 }
-
-function Stat({ label, value, color = 'text-text-1' }) {
-  return (
-    <div className="text-center">
-      <p className={`text-xl font-bold font-display tabular-nums ${color}`}>{value ?? 0}</p>
-      <p className="text-xs text-text-3 mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function ChevronIcon({ className }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
+function EditIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
 }
 function RocketIcon({ className }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>;
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>;
+}
+function TrashIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
 }

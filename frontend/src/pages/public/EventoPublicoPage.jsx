@@ -1,55 +1,286 @@
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
+import { eventosApi } from '../../api/eventos.js';
+import { pagosApi }   from '../../api/pagos.js';
+import { BLOCKS } from '../events/editor/blocks.jsx';
+
+/* Página pública de un evento.
+   Renderiza los bloques de page_json.pages[N].blocks dinámicamente.
+   Navegación entre páginas con tabs al final. */
 
 export default function EventoPublicoPage() {
   const { slug } = useParams();
-  return (
+  const [params, setParams] = useSearchParams();
+  const [evento,  setEvento]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState('');
+  const [reservaTipo, setReservaTipo] = useState(null);
+  const [reservaOk,   setReservaOk]   = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    eventosApi.publicoBySlug(slug)
+      .then(d => setEvento(d.evento))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const pages = useMemo(() => {
+    if (!evento) return [];
+    const pj = evento.page_json;
+    if (pj?.pages?.length) return pj.pages;
+    if (Array.isArray(pj?.blocks)) return [{ id: 'inicio', nombre: 'Inicio', blocks: pj.blocks }];
+    return [{ id: 'inicio', nombre: 'Inicio', blocks: [] }];
+  }, [evento]);
+
+  const pageIdx = (() => {
+    const p = Number(params.get('p') || 1);
+    return Math.max(1, Math.min(pages.length, p));
+  })();
+  const activePage = pages[pageIdx - 1];
+
+  if (loading) return (
     <section className="px-5 sm:px-8 py-12 max-w-5xl mx-auto">
-      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-8">
+      <div className="h-64 rounded-3xl bg-surface/40 border border-border animate-pulse" />
+    </section>
+  );
+
+  if (error || !evento) return (
+    <section className="px-5 sm:px-8 py-20 max-w-3xl mx-auto text-center">
+      <p className="text-xs uppercase tracking-widest text-danger mb-3">Evento no encontrado</p>
+      <h1 className="text-3xl font-bold font-display tracking-tight text-text-1 mb-4">
+        Este evento no existe o no está publicado.
+      </h1>
+      <Link to="/explorar" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border-2 text-sm hover:bg-surface">
+        ← Volver a explorar
+      </Link>
+    </section>
+  );
+
+  return (
+    <section className="px-5 sm:px-8 py-12 max-w-3xl mx-auto">
+      {/* Bloques */}
+      <div className="space-y-8" key={activePage?.id}>
+        {(activePage?.blocks || []).map(block => {
+          if (block.data?.oculto) return null;
+          const B = BLOCKS[block.type];
+          if (!B) return null;
+          const Preview = B.Preview;
+          return (
+            <div key={block.id} className="animate-[fadeUp_0.4s_ease_both]">
+              <Preview data={block.data || {}} evento={evento} onReservar={setReservaTipo} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Page tabs al final */}
+      {pages.length > 1 && (
+        <nav className="mt-16 pt-8 border-t border-border flex items-center justify-center gap-1.5">
+          {pages.map((p, i) => (
+            <button
+              key={p.id}
+              onClick={() => setParams(prev => { const x = new URLSearchParams(prev); x.set('p', String(i + 1)); return x; })}
+              className={`min-w-[40px] h-10 px-4 rounded-full text-sm font-medium transition-all
+                ${pageIdx === i + 1
+                  ? 'bg-text-1 text-bg'
+                  : 'border border-border text-text-2 hover:text-text-1 hover:bg-surface-2'}
+              `}
+              aria-current={pageIdx === i + 1 ? 'page' : undefined}
+            >
+              <span className="hidden sm:inline mr-1.5">{i + 1}.</span>
+              {p.nombre}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {/* Volver a explorar */}
+      <div className="mt-12 text-center">
+        <Link to="/explorar" className="text-xs text-text-3 hover:text-text-1 transition-colors">
+          ← Volver a explorar
+        </Link>
+      </div>
+
+      {/* Modales */}
+      {reservaTipo && (
+        <ReservaModal
+          tipo={reservaTipo}
+          slug={slug}
+          currency={evento.currency}
+          evento={evento}
+          onClose={() => setReservaTipo(null)}
+          onSuccess={(t) => { setReservaTipo(null); setReservaOk(t); }}
+        />
+      )}
+      {reservaOk && (
+        <ConfirmacionModal ticket={reservaOk} onClose={() => setReservaOk(null)} />
+      )}
+    </section>
+  );
+}
+
+/* ─────────── Modales de reserva (sin cambios) ─────────── */
+
+function ReservaModal({ tipo, slug, currency, evento, onClose, onSuccess }) {
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '' });
+  const [working, setWorking] = useState(false);
+  const [err, setErr] = useState('');
+
+  const hasEarly = tipo.early_bird_precio != null && tipo.early_bird_hasta && new Date(tipo.early_bird_hasta) > new Date();
+  const precio = hasEarly ? Number(tipo.early_bird_precio) : Number(tipo.precio);
+  const isFree = precio === 0;
+  const tienePagoSimple = Boolean(evento?.pago_llave || evento?.pago_qr_url);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setWorking(true); setErr('');
+    try {
+      if (isFree || tienePagoSimple) {
+        const res = await eventosApi.reservar(slug, {
+          ticket_type_id: tipo.id,
+          nombre: form.nombre, email: form.email, telefono: form.telefono,
+        });
+        onSuccess({ ...res.ticket, requierePago: !isFree, tipo, pagoSimple: tienePagoSimple && !isFree });
+      } else {
+        const res = await pagosApi.comprar(slug, {
+          ticket_type_id: tipo.id,
+          nombre: form.nombre, email: form.email, telefono: form.telefono,
+        });
+        const url = res.checkout?.init_point || res.checkout?.sandbox_init_point;
+        if (!url) throw new Error('Mercado Pago no devolvió el link de pago.');
+        window.location.href = url;
+      }
+    } catch (e) { setErr(e.response?.data?.error || e.message); }
+    finally    { setWorking(false); }
+  };
+
+  return (
+    <ModalShell onClose={onClose}>
+      <form onSubmit={submit} className="space-y-5">
         <div>
-          <div className="aspect-video rounded-3xl border border-border bg-gradient-to-br from-primary/20 via-accent/10 to-bg mb-6 flex items-center justify-center">
-            <span className="text-xs uppercase tracking-widest text-text-3">Portada del evento</span>
-          </div>
-          <p className="text-xs uppercase tracking-widest text-primary-light font-semibold mb-3">Evento público</p>
-          <h1 className="text-3xl sm:text-4xl font-bold font-display tracking-tight text-text-1 mb-3">
-            {slug ? slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Evento'}
-          </h1>
-          <p className="text-base text-text-2 leading-relaxed mb-8">
-            Esta es la página pública del evento. Aquí se mostrará la descripción real, agenda,
-            speakers, ubicación, política de reembolso y un botón de compra de boleta o registro
-            según la configuración del organizador.
+          <p className="text-xs uppercase tracking-widest text-text-3 font-semibold mb-2">
+            {isFree ? 'Reserva tu cupo' : 'Compra tu boleta'}
           </p>
-
-          <div className="grid sm:grid-cols-2 gap-3 mb-8">
-            {[
-              ['Fecha', '15 — 16 Agosto 2026'],
-              ['Ciudad', 'Ibagué, Colombia'],
-              ['Modalidad', 'Híbrido'],
-              ['Categoría', 'Tecnología'],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-2xl border border-border bg-surface/40 px-4 py-3">
-                <p className="text-[10px] uppercase tracking-widest text-text-3 mb-1">{k}</p>
-                <p className="text-sm text-text-1 font-medium">{v}</p>
+          <h2 className="text-2xl font-bold font-display text-text-1 tracking-tight">{tipo.nombre}</h2>
+          <div className="flex items-baseline gap-2 mt-2">
+            <p className="text-2xl font-bold font-display text-text-1 tabular-nums">
+              {isFree ? 'Gratis' : `$${precio.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`}
+            </p>
+            {!isFree && <span className="text-xs text-text-3">{tipo.currency || currency}</span>}
+          </div>
+        </div>
+        {err && <div className="px-4 py-3 rounded-2xl bg-danger/10 border border-danger/20 text-danger-light text-sm">{err}</div>}
+        <div className="field">
+          <label className="label">Nombre completo *</label>
+          <input required value={form.nombre} onChange={e => setForm(f => ({...f, nombre: e.target.value}))}
+            className="input rounded-2xl py-3 text-base" placeholder="Tu nombre" autoFocus />
+        </div>
+        <div className="field">
+          <label className="label">Email *</label>
+          <input required type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}
+            className="input rounded-2xl py-3 text-base" placeholder="tu@email.com" />
+        </div>
+        <div className="field">
+          <label className="label">Teléfono <span className="lowercase tracking-normal font-normal text-text-3">(opcional)</span></label>
+          <input value={form.telefono} onChange={e => setForm(f => ({...f, telefono: e.target.value}))}
+            className="input rounded-2xl py-3 text-base" placeholder="300 000 0000" />
+        </div>
+        {!isFree && tienePagoSimple && (
+          <div className="rounded-2xl bg-warning/10 border border-warning/25 px-4 py-3 text-xs text-text-2 leading-relaxed space-y-2">
+            <p className="font-semibold text-warning-light">Pago manual vía Mercado Pago</p>
+            {evento.pago_llave && (
+              <p>Pagá <strong className="text-text-1">${precio.toLocaleString('es-CO')} {tipo.currency || currency}</strong> a la llave/alias <span className="font-mono text-text-1">{evento.pago_llave}</span> en tu app de MP.</p>
+            )}
+            {evento.pago_qr_url && (
+              <div className="mt-2">
+                <p className="mb-2">Escaneá este QR desde tu app de MP:</p>
+                <img src={evento.pago_qr_url} alt="QR Mercado Pago" className="w-40 h-40 rounded-xl bg-white object-contain mx-auto p-2" />
               </div>
-            ))}
+            )}
+            {evento.pago_instrucciones && (
+              <p className="text-text-3 mt-1">{evento.pago_instrucciones}</p>
+            )}
+            <p className="text-text-3 mt-2 pt-2 border-t border-warning/15">
+              Al continuar, tu boleta queda <strong className="text-text-1">reservada</strong> pero pendiente de confirmación. El organizador la valida cuando reciba el pago.
+            </p>
           </div>
+        )}
+        {!isFree && !tienePagoSimple && (
+          <div className="rounded-2xl bg-primary/10 border border-primary/20 px-4 py-3 text-xs text-text-2 leading-relaxed">
+            Al continuar serás redirigido a <strong className="text-text-1">Mercado Pago</strong> para completar el pago de forma segura. Al volver verás tu boleta con QR.
+          </div>
+        )}
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-full text-sm text-text-2 hover:text-text-1">Cancelar</button>
+          <button type="submit" disabled={working}
+            className="px-5 py-2.5 rounded-full bg-text-1 text-bg hover:bg-white text-sm font-semibold disabled:opacity-60 transition-all">
+            {working
+              ? (isFree ? 'Reservando...' : (tienePagoSimple ? 'Reservando...' : 'Redirigiendo a MP...'))
+              : (isFree ? 'Confirmar reserva' : (tienePagoSimple ? 'Apartar boleta' : 'Pagar con Mercado Pago'))}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
 
-          <p className="text-xs text-text-3">
-            Esta vista es un placeholder. En Fase 5 se conecta a datos reales del evento publicado.
-          </p>
+function ConfirmacionModal({ ticket, onClose }) {
+  const qrValue = ticket.qr_token || ticket.codigo;
+  return (
+    <ModalShell onClose={onClose}>
+      <div className="text-center py-3">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-success/15 border border-success/30 mb-5">
+          <svg className="w-7 h-7 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold font-display text-text-1 tracking-tight mb-2">
+          {ticket.requierePago ? '¡Boleta apartada!' : '¡Reserva confirmada!'}
+        </h2>
+        <p className="text-sm text-text-2 mb-5 leading-relaxed max-w-sm mx-auto">
+          Muestra este QR en la entrada del evento. También puedes mostrar el código.
+        </p>
+
+        {/* QR */}
+        <div className="bg-white rounded-2xl p-4 inline-block mb-4">
+          <QRCodeSVG value={qrValue} size={180} level="M" includeMargin={false} />
         </div>
 
-        <aside className="rounded-3xl border border-border-2 bg-surface/60 p-6 h-fit sticky top-28">
-          <p className="text-xs uppercase tracking-widest text-text-3 mb-2">Boleta</p>
-          <p className="text-3xl font-bold font-display text-text-1 mb-1">Gratis</p>
-          <p className="text-xs text-text-2 mb-6">o paga con BRE-B si el organizador lo configura</p>
-          <button className="w-full py-3.5 rounded-2xl text-sm font-semibold bg-text-1 text-bg hover:bg-white transition-colors mb-3">
-            Reservar mi cupo
-          </button>
-          <Link to="/explorar" className="block text-center text-xs text-text-2 hover:text-text-1 transition-colors">
-            ← Volver a explorar
-          </Link>
-        </aside>
+        <div className="rounded-2xl border border-border-2 bg-surface px-4 py-3 mb-4">
+          <p className="text-[10px] uppercase tracking-widest text-text-3 font-semibold mb-1">Código alternativo</p>
+          <p className="font-mono text-xl font-bold text-text-1 tabular-nums tracking-widest">{ticket.codigo}</p>
+        </div>
+
+        <p className="text-xs text-text-3 mb-5">
+          Guarda este link para volver a verlo: <br/>
+          <a href={`/mi-ticket/${ticket.codigo}`} className="text-primary-light hover:underline">
+            {window.location.origin}/mi-ticket/{ticket.codigo}
+          </a>
+        </p>
+
+        <button onClick={onClose} className="px-6 py-3 rounded-full bg-text-1 text-bg hover:bg-white text-sm font-semibold transition-all">
+          Listo
+        </button>
       </div>
-    </section>
+    </ModalShell>
+  );
+}
+
+function ModalShell({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/80 backdrop-blur-md animate-[fadeIn_0.2s_ease_both]" onClick={onClose}>
+      <div className="relative w-full max-w-md rounded-3xl border border-border-2 bg-surface shadow-2xl p-6 animate-[authCardIn_0.35s_cubic-bezier(0.16,1,0.3,1)_both]"
+        onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} aria-label="Cerrar"
+          className="absolute top-3 right-3 w-9 h-9 rounded-xl text-text-3 hover:text-text-1 hover:bg-surface-2 flex items-center justify-center transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        {children}
+      </div>
+    </div>
   );
 }
