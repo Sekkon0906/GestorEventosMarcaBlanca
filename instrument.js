@@ -1,10 +1,23 @@
-// Importa Sentry
-const Sentry = require("@sentry/node");
+'use strict';
 
-Sentry.init({
-  dsn: "https://02d62ff34ae19d00244130baf70c0d85@o4511361090060288.ingest.us.sentry.io/4511361101856768",
-  // Esta opción envía datos básicos de IP para identificar de dónde vienen los errores
-  sendDefaultPii: true,
-  // Ajusta el porcentaje de trazas (1.0 significa capturar todo para desarrollo)
-  tracesSampleRate: 1.0,
-});
+/**
+ * instrument.js — Sentry SDK initialization.
+ * Debe ser el PRIMER require de index.js.
+ * El DSN se lee de SENTRY_DSN env var; si no está, Sentry queda deshabilitado.
+ */
+
+require('dotenv').config();
+const Sentry = require('@sentry/node');
+
+const dsn = process.env.SENTRY_DSN;
+
+if (dsn) {
+  Sentry.init({
+    dsn,
+    sendDefaultPii  : false,
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+    environment     : process.env.NODE_ENV || 'development',
+  });
+} else {
+  console.warn('[Sentry] SENTRY_DSN no configurado — monitoreo deshabilitado.');
+}

@@ -73,6 +73,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.get('/debug-sentry', () => { throw new Error('Prueba Sentry'); });
 }
 
+// ── 7. Sentry error handler ──────────────────────────────────
 Sentry.setupExpressErrorHandler(app);
 
 app.use((req, res) => {
