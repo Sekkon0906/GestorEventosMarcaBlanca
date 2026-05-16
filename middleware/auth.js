@@ -3,7 +3,8 @@ const SECRET = process.env.JWT_SECRET || 'eventos_marca_blanca_secret';
 
 const verificarToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token      = authHeader && authHeader.split(' ')[1];
+  // Acepta token desde header Authorization O desde query param ?token= (para descargas directas)
+  const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
   if (!token) return res.status(401).json({ error: 'Token requerido.' });
   try {
     req.usuario = jwt.verify(token, SECRET);

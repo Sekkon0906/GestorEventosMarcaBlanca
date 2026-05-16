@@ -32,15 +32,26 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const exportarCSV = () => {
+  const exportarCSV = async () => {
     const token = localStorage.getItem('gestek_token');
-    const url = `${client.defaults.baseURL}/api/analytics/exportar-csv`;
-    const a = document.createElement('a');
-    a.setAttribute('download', 'asistentes-gestek.csv');
-    a.href = url + (token ? `?token=${token}` : '');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const resp = await fetch(
+        `${client.defaults.baseURL}/api/analytics/exportar-csv`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!resp.ok) throw new Error('Sin acceso');
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'asistentes-gestek.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Error al exportar CSV. Verifica que tienes sesión iniciada.');
+    }
   };
 
   if (loading) return (
