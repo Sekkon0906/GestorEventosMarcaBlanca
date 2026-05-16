@@ -1,0 +1,50 @@
+{
+  "name": "GESTEK — Event OS",
+  "short_name": "GESTEK",
+  "description": "The operating system for events. Plataforma SaaS white-label para gestión de eventos empresariales.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#1e40af",
+  "lang": "es",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mis Eventos",
+      "short_name": "Eventos",
+      "description": "Ver lista de eventos",
+      "url": "/eventos",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Scanner QR",
+      "short_name": "Scanner",
+      "description": "Escanear tickets QR",
+      "url": "/scan",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": []
+}

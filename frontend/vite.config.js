@@ -6,10 +6,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/auth'    : 'http://localhost:3000',
-      '/eventos' : 'http://localhost:3000',
-      '/usuarios': 'http://localhost:3000',
-      '/api'     : 'http://localhost:3000',
+      '/auth'         : 'http://localhost:3000',
+      '/eventos'      : 'http://localhost:3000',
+      '/usuarios'     : 'http://localhost:3000',
+      '/api'          : 'http://localhost:3000',
+      '/qr'           : 'http://localhost:3000',
+      '/gamificacion' : 'http://localhost:3000',
+      '/notificaciones': 'http://localhost:3000',
     },
   },
 });

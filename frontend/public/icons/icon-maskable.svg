@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Maskable: fondo llena TODO el cuadrado, icono centrado con padding safe zone -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Icono con padding del 10% (safe zone maskable = circulo central) -->
+  <path
+    d="M320 192 Q300 152 256 152 Q196 152 196 256 Q196 360 256 360 Q308 360 320 316 L320 256 L256 256"
+    stroke="#F1F5F9"
+    stroke-width="34"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg>
