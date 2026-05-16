@@ -2,25 +2,18 @@ require('./instrument.js');
 require('dotenv').config();
 
 const express = require('express');
-const cors    = require('cors');
 const Sentry  = require('@sentry/node');
+const env     = require('./config/env.js');
+const { applySecurity, authLimiter } = require('./config/security.js');
 
 const app = express();
 
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000']
-  : ['http://localhost:5173', 'http://localhost:3000'];
-
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origen no permitido — ${origin}`));
-  },
-  credentials: true,
-}));
-
+/* Body parsers ANTES de applySecurity para que sanitizeBody tenga req.body */
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+/* Security stack: helmet + CORS + rate limit + sanitize */
+applySecurity(app);
 
 /* DEBUG: log de cada request entrante */
 app.use((req, _res, next) => {
@@ -33,7 +26,7 @@ app.use('/me',               require('./routes/me.js'));
 app.use('/categorias',       require('./routes/categorias.js'));
 app.use('/eventos/publicos', require('./routes/eventos.publicos.js'));
 /* Pagos (MP): define sus propios paths absolutos — /me/mercadopago, /eventos/publicos/.../comprar, /webhooks/mercadopago */
-app.use('/',                 require('./routes/pagos.js'));
+app.use('/', authLimiter,    require('./routes/pagos.js'));
 /* Push: define rutas absolutas /push/vapid-key, /me/push/*, /eventos/:id/push/broadcast */
 app.use('/',                 require('./routes/push.js'));
 /* Estos dos se montan en /eventos y definen sus paths con :eventoId internamente
