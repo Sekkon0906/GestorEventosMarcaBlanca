@@ -1,5 +1,8 @@
-import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+import { pagosApi } from '../../api/pagos.js';
 
 const PLANS = [
   {
@@ -26,7 +29,7 @@ const PLANS = [
   {
     name: 'Pro',
     tagline: 'API, agente IA, white-label y dominio propio. Para equipos que quieren escalar y mantener su marca.',
-    price: { monthly: 29, annual: 19 },
+    price: { monthly: 19.99, annual: 19.99 },
     highlight: true,
     badge: 'Recomendado',
     cta: { label: 'Probar Pro 14 días gratis', to: '/register?plan=pro' },
@@ -140,6 +143,32 @@ const FAQ = [
 
 export default function PlanesPage() {
   const [annual, setAnnual] = useState(false);
+  const { usuario } = useAuth();
+  const { error: toastErr } = useToast();
+  const navigate = useNavigate();
+  const [planEstado, setPlanEstado] = useState(null);
+  const [working, setWorking] = useState(false);
+
+  useEffect(() => {
+    if (!usuario) { setPlanEstado(null); return; }
+    pagosApi.planEstado().then(setPlanEstado).catch(() => {});
+  }, [usuario?.id]);
+
+  const irAPro = async () => {
+    if (!usuario) { navigate('/register?plan=pro'); return; }
+    if (planEstado?.plan === 'pro') return;
+    setWorking(true);
+    try {
+      const r = await pagosApi.comprarPro();
+      const url = r.checkout?.init_point || r.checkout?.sandbox_init_point;
+      if (!url) throw new Error('Mercado Pago no devolvió el link de pago.');
+      window.location.href = url;
+    } catch (e) {
+      toastErr(e.response?.data?.error || e.message);
+      setWorking(false);
+    }
+  };
+
   return (
     <>
       <section className="px-5 sm:px-8 py-10 max-w-5xl mx-auto">
@@ -153,20 +182,7 @@ export default function PlanesPage() {
             — no para desbloquear lo básico.
           </p>
 
-          <div className="inline-flex items-center gap-1 mt-9 p-1 rounded-full border border-border bg-surface/60">
-            <button
-              onClick={() => setAnnual(false)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${!annual ? 'bg-text-1 text-bg' : 'text-text-2 hover:text-text-1'}`}
-            >
-              Mensual
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${annual ? 'bg-text-1 text-bg' : 'text-text-2 hover:text-text-1'}`}
-            >
-              Anual <span className={`text-[10px] px-2 py-0.5 rounded-full ${annual ? 'bg-bg/20 text-bg' : 'bg-success/15 text-success'}`}>−35%</span>
-            </button>
-          </div>
+          <p className="mt-6 text-sm text-text-3">Pago único de <strong className="text-text-1">USD $19.99</strong> por 30 días de Pro. Sin renovación automática.</p>
         </header>
 
         <div className="grid md:grid-cols-2 gap-5">
@@ -190,7 +206,7 @@ export default function PlanesPage() {
                   <span className="text-5xl font-bold font-display text-text-1">
                     {price === 0 ? 'Gratis' : `$${price}`}
                   </span>
-                  {price > 0 && <span className="text-base text-text-3 mb-2">USD/mes {annual && '· anual'}</span>}
+                  {price > 0 && <span className="text-base text-text-3 mb-2">USD / 30 días</span>}
                 </div>
                 <ul className="space-y-3 flex-1 mb-8">
                   {p.features.map(f => (
@@ -202,16 +218,32 @@ export default function PlanesPage() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to={p.cta.to}
-                  className={`w-full text-center py-3.5 rounded-full text-base font-semibold transition-all ${
-                    p.cta.primary || p.highlight
-                      ? 'bg-text-1 text-bg hover:bg-white'
-                      : 'border border-border-2 text-text-1 hover:bg-surface-2'
-                  }`}
-                >
-                  {p.cta.label}
-                </Link>
+                {p.highlight ? (
+                  planEstado?.plan === 'pro' ? (
+                    <div className="w-full text-center py-3.5 rounded-full text-base font-semibold border border-success/40 text-success bg-success/10">
+                      Plan activo {planEstado.expires_at && `· hasta ${new Date(planEstado.expires_at).toLocaleDateString()}`}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={irAPro}
+                      disabled={working}
+                      className="w-full text-center py-3.5 rounded-full text-base font-semibold transition-all bg-text-1 text-bg hover:bg-white disabled:opacity-60"
+                    >
+                      {working ? 'Redirigiendo a Mercado Pago...' : (usuario ? 'Pagar y activar Pro' : p.cta.label)}
+                    </button>
+                  )
+                ) : (
+                  <Link
+                    to={p.cta.to}
+                    className={`w-full text-center py-3.5 rounded-full text-base font-semibold transition-all ${
+                      p.cta.primary
+                        ? 'bg-text-1 text-bg hover:bg-white'
+                        : 'border border-border-2 text-text-1 hover:bg-surface-2'
+                    }`}
+                  >
+                    {p.cta.label}
+                  </Link>
+                )}
               </div>
             );
           })}

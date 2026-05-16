@@ -3,6 +3,8 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { RolBadge } from '../ui/Badge.jsx';
 
+const ROOT_PATHS = new Set(['/dashboard', '/eventos', '/usuarios', '/configuracion']);
+
 const CRUMBS = {
   '/dashboard'    : [{ label: 'Dashboard' }],
   '/eventos'      : [{ label: 'Eventos' }],
@@ -17,7 +19,7 @@ const MOCK_NOTIFS = [
   { id: 3, text: 'Recordatorio: evento en 24h.',              time: 'hace 1h',  read: true  },
 ];
 
-export default function TopBar() {
+export default function TopBar({ onMenu }) {
   const { pathname }  = useLocation();
   const { usuario }   = useAuth();
   const navigate      = useNavigate();
@@ -29,8 +31,28 @@ export default function TopBar() {
 
   const markAllRead = () => setNotifs(n => n.map(x => ({ ...x, read: true })));
 
+  const showBack = !ROOT_PATHS.has(pathname);
+
   return (
-    <header className="h-14 flex-shrink-0 bg-surface border-b border-border flex items-center gap-4 px-6 relative z-10">
+    <header className="h-14 flex-shrink-0 bg-surface border-b border-border flex items-center gap-3 px-4 sm:px-6 relative z-10">
+      {/* Hamburger mobile */}
+      <button
+        onClick={onMenu}
+        aria-label="Abrir menú"
+        className="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl text-text-2 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0"
+      >
+        <MenuIcon className="w-5 h-5" />
+      </button>
+      {showBack && (
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Volver"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-xl text-text-2 hover:text-text-1 hover:bg-surface-2 transition-colors flex-shrink-0"
+        >
+          <BackIcon className="w-4 h-4" />
+        </button>
+      )}
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm flex-1 min-w-0">
         {crumbs.map((c, i) => (
@@ -46,12 +68,6 @@ export default function TopBar() {
 
       {/* Right side */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Quick create */}
-        <Link to="/eventos/nuevo" className="btn-primary btn-sm hidden sm:inline-flex">
-          <PlusIcon className="w-3.5 h-3.5" />
-          Nuevo evento
-        </Link>
-
         {/* Notifications */}
         <div className="relative">
           <button
@@ -104,11 +120,14 @@ export default function TopBar() {
   );
 }
 
+function MenuIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>;
+}
 function BellIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
 }
-function PlusIcon({ className }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>;
+function BackIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>;
 }
 function ChevronIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;

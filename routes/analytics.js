@@ -1,68 +1,126 @@
-const router = require('express').Router();
-const verificarToken = require('../middleware/auth');
+const express = require('express');
+const supabase = require('../lib/supabase.js');
+const { verifySupabaseJWT } = require('../middleware/auth.js');
 
-// Importamos los eventos desde una variable compartida
-// En produccion esto vendria de la base de datos
-let getEventos = null;
-router.setEventos = (fn) => { getEventos = fn; };
+const router = express.Router();
+router.use(verifySupabaseJWT);
 
-// GET /analytics/resumen — resumen general
-router.get('/resumen', verificarToken, (req, res) => {
-  const eventos = getEventos ? getEventos() : [];
+async function assertOwner(eventoId, userId) {
+  const { data, error } = await supabase
+    .from('eventos').select('id, owner_id').eq('id', eventoId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Evento no encontrado.');
+  if (data.owner_id !== userId) throw new Error('No autorizado.');
+  return data;
+}
 
-  const totalEventos = eventos.length;
-  const totalAsistentes = eventos.reduce((sum, e) => sum + e.asistentes.length, 0);
-  const totalVistas = eventos.reduce((sum, e) => sum + (e.vistas || 0), 0);
+/* GET /eventos/:eventoId/analytics — métricas agregadas del evento.
+   Query: ?dias=30 (default). */
+router.get('/:eventoId/analytics', async (req, res) => {
+  const { eventoId } = req.params;
+  const dias = Math.min(Number(req.query.dias || 30), 365);
 
-  res.json({
-    resumen: {
-      total_eventos: totalEventos,
-      total_asistentes: totalAsistentes,
-      total_vistas: totalVistas
+  try {
+    await assertOwner(eventoId, req.user.id);
+    const desde = new Date(Date.now() - dias * 24 * 3600 * 1000).toISOString();
+
+    /* Visitas en el rango */
+    const { data: views, error: ev } = await supabase
+      .from('event_views')
+      .select('visitor_hash, source, referrer, created_at')
+      .eq('evento_id', eventoId)
+      .gte('created_at', desde)
+      .order('created_at', { ascending: true });
+    if (ev) return res.status(500).json({ error: ev.message });
+
+    /* Tickets en el rango */
+    const { data: tickets, error: et } = await supabase
+      .from('tickets')
+      .select('id, estado, precio_pagado, created_at, ticket_type_id, tipo:ticket_types!ticket_type_id(nombre)')
+      .eq('evento_id', eventoId)
+      .gte('created_at', desde);
+    if (et) return res.status(500).json({ error: et.message });
+
+    /* Agregados */
+    const totalViews = views?.length || 0;
+    const uniqueVisitors = new Set((views || []).map(v => v.visitor_hash)).size;
+    const totalTickets = tickets?.length || 0;
+    const ticketsPagados = (tickets || []).filter(t => t.estado === 'pagado').length;
+    const asistencias = (tickets || []).filter(t => t.estado === 'usado').length;
+    const ingresos = (tickets || []).reduce((sum, t) => sum + (Number(t.precio_pagado) || 0), 0);
+    const conversion = uniqueVisitors > 0 ? (totalTickets / uniqueVisitors) * 100 : 0;
+    const tasaAsistencia = ticketsPagados > 0 ? (asistencias / ticketsPagados) * 100 : 0;
+
+    /* Source breakdown */
+    const sourcesMap = {};
+    for (const v of views || []) {
+      const s = v.source || 'direct';
+      sourcesMap[s] = (sourcesMap[s] || 0) + 1;
     }
-  });
-});
+    const sources = Object.entries(sourcesMap).map(([k, v]) => ({ source: k, count: v }))
+      .sort((a, b) => b.count - a.count);
 
-// GET /analytics/eventos-populares — eventos con mas asistentes
-router.get('/eventos-populares', verificarToken, (req, res) => {
-  const eventos = getEventos ? getEventos() : [];
+    /* Top referrers (excluyendo direct) */
+    const refMap = {};
+    for (const v of views || []) {
+      if (!v.referrer) continue;
+      try {
+        const host = new URL(v.referrer).hostname.replace(/^www\./, '');
+        refMap[host] = (refMap[host] || 0) + 1;
+      } catch { /* skip */ }
+    }
+    const topReferrers = Object.entries(refMap)
+      .map(([host, count]) => ({ host, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
 
-  const populares = [...eventos]
-    .sort((a, b) => b.asistentes.length - a.asistentes.length)
-    .slice(0, 5)
-    .map(e => ({
-      id: e.id,
-      nombre: e.nombre,
-      fecha: e.fecha,
-      lugar: e.lugar,
-      capacidad: e.capacidad,
-      asistentes_registrados: e.asistentes.length,
-      porcentaje_ocupacion: Math.round((e.asistentes.length / e.capacidad) * 100) + '%',
-      vistas: e.vistas || 0
-    }));
+    /* Ventas por tipo de ticket */
+    const tipoMap = {};
+    for (const t of tickets || []) {
+      const k = t.tipo?.nombre || 'Sin tipo';
+      tipoMap[k] = tipoMap[k] || { nombre: k, vendidos: 0, ingresos: 0 };
+      tipoMap[k].vendidos++;
+      tipoMap[k].ingresos += Number(t.precio_pagado) || 0;
+    }
+    const ventasPorTipo = Object.values(tipoMap).sort((a, b) => b.vendidos - a.vendidos);
 
-  res.json({
-    eventos_populares: populares
-  });
-});
+    /* Serie diaria: visitas vs ventas por día */
+    const dailyMap = {};
+    const dayKey = (iso) => iso.slice(0, 10);
+    for (let i = 0; i < dias; i++) {
+      const d = new Date(Date.now() - (dias - 1 - i) * 24 * 3600 * 1000);
+      dailyMap[d.toISOString().slice(0, 10)] = { fecha: d.toISOString().slice(0, 10), visitas: 0, tickets: 0 };
+    }
+    for (const v of views || []) {
+      const k = dayKey(v.created_at);
+      if (dailyMap[k]) dailyMap[k].visitas++;
+    }
+    for (const t of tickets || []) {
+      const k = dayKey(t.created_at);
+      if (dailyMap[k]) dailyMap[k].tickets++;
+    }
+    const daily = Object.values(dailyMap);
 
-// GET /analytics/mas-vistos — eventos con mas vistas
-router.get('/mas-vistos', verificarToken, (req, res) => {
-  const eventos = getEventos ? getEventos() : [];
-
-  const masVistos = [...eventos]
-    .sort((a, b) => (b.vistas || 0) - (a.vistas || 0))
-    .slice(0, 5)
-    .map(e => ({
-      id: e.id,
-      nombre: e.nombre,
-      vistas: e.vistas || 0,
-      asistentes: e.asistentes.length
-    }));
-
-  res.json({
-    mas_vistos: masVistos
-  });
+    res.json({
+      rango: { dias, desde },
+      resumen: {
+        visitas: totalViews,
+        visitantes_unicos: uniqueVisitors,
+        tickets_total: totalTickets,
+        tickets_pagados: ticketsPagados,
+        asistencias,
+        ingresos,
+        conversion: Number(conversion.toFixed(2)),
+        tasa_asistencia: Number(tasaAsistencia.toFixed(2)),
+      },
+      sources,
+      top_referrers: topReferrers,
+      ventas_por_tipo: ventasPorTipo,
+      daily,
+    });
+  } catch (e) {
+    res.status(e.message === 'No autorizado.' ? 403 : 400).json({ error: e.message });
+  }
 });
 
 module.exports = router;

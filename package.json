@@ -1,51 +1,27 @@
 {
-  "name": "eventos-api",
-  "version": "1.0.0",
-  "description": "API Sistema de Eventos Marca Blanca - Cristhian Ospina",
+  "name": "gestek-api",
+  "version": "0.1.0",
+  "description": "GESTEK Event OS — backend Express",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
     "dev:frontend": "npm run dev --prefix ./frontend",
     "dev:full": "concurrently --names \"API,FRONTEND\" --prefix-colors \"cyan,magenta\" \"node --watch index.js\" \"npm run dev --prefix ./frontend\"",
-    "install:all": "npm install && npm install --prefix ./frontend",
-    "test": "jest --runInBand",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "setupFiles": [
-      "./tests/setup.js"
-    ],
-    "testMatch": [
-      "**/tests/**/*.test.js"
-    ],
-    "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "routes/auth.js",
-      "middleware/roles.js",
-      "services/auth.service.js",
-      "services/notification.service.js",
-      "validators/auth.validator.js",
-      "validators/evento.validator.js"
-    ]
+    "install:all": "npm install && npm install --prefix ./frontend"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "jest": "^29.7.0",
-    "supertest": "^7.2.2"
+    "concurrently": "^9.1.2"
   },
   "dependencies": {
     "@sentry/node": "^10.52.0",
     "@supabase/supabase-js": "^2.105.3",
-    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^16.0.0",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.5.1",
+    "express-rate-limit": "^8.5.2",
     "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^9.0.3",
     "web-push": "^3.6.7"
   }
 }

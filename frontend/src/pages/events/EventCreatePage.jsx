@@ -1,48 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { eventosApi } from '../../api/eventos.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import DateTimePicker  from '../../components/ui/DateTimePicker.jsx';
+import LinksEditor     from '../../components/ui/LinksEditor.jsx';
+import CoverUploader   from '../../components/ui/CoverUploader.jsx';
+import GalleryUploader from '../../components/ui/GalleryUploader.jsx';
 
-const STEPS = ['Información básica', 'Fechas y lugar', 'Entradas', 'Revisión'];
+const STEPS = ['Información básica', 'Imágenes', 'Fecha y lugar', 'Revisión'];
 
 export default function EventCreatePage() {
-  const navigate          = useNavigate();
+  const navigate           = useNavigate();
+  const { usuario }        = useAuth();
   const { success, error } = useToast();
   const [step,    setStep]    = useState(0);
   const [loading, setLoading] = useState(false);
+  const [cats,    setCats]    = useState([]);
 
   const [form, setForm] = useState({
-    nombre        : '',
-    descripcion   : '',
-    modalidad     : 'fisico',
-    visibilidad   : 'publico',
-    fecha_inicio  : '',
-    fecha_fin     : '',
-    ubicacion     : { ciudad: '', lugar: '', direccion: '', link_streaming: '' },
-    entradas      : [{ tipo: 'General', precio: 0, capacidad: 100, descripcion: '' }],
-    imagen_portada: '',
+    titulo            : '',
+    descripcion       : '',
+    categoria_id      : '',
+    modalidad         : 'fisico',
+    fecha_inicio      : '',
+    fecha_fin         : '',
+    location_nombre   : '',
+    location_direccion: '',
+    links             : [],
+    cover_url         : '',
+    gallery           : [],
+    aforo_total       : '',
   });
 
-  const update      = (key, val)     => setForm(f => ({ ...f, [key]: val }));
-  const updateUbic  = (key, val)     => setForm(f => ({ ...f, ubicacion: { ...f.ubicacion, [key]: val } }));
-  const updateEnt   = (i, key, val)  => setForm(f => {
-    const e = [...f.entradas]; e[i] = { ...e[i], [key]: val }; return { ...f, entradas: e };
-  });
-  const addEntrada    = () => setForm(f => ({ ...f, entradas: [...f.entradas, { tipo: '', precio: 0, capacidad: 50, descripcion: '' }] }));
-  const removeEntrada = (i) => setForm(f => ({ ...f, entradas: f.entradas.filter((_, idx) => idx !== i) }));
+  useEffect(() => {
+    eventosApi.categorias()
+      .then(d => setCats(d.categorias || []))
+      .catch(() => {});
+  }, []);
+
+  const update = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       const payload = {
-        ...form,
-        fecha_inicio: form.fecha_inicio || undefined,
-        fecha_fin   : form.fecha_fin    || undefined,
-        entradas    : form.entradas.map(e => ({ ...e, precio: parseFloat(e.precio) || 0, capacidad: parseInt(e.capacidad) || 1 })),
+        titulo            : form.titulo,
+        descripcion       : form.descripcion || null,
+        categoria_id      : form.categoria_id || null,
+        modalidad         : form.modalidad,
+        fecha_inicio      : form.fecha_inicio ? new Date(form.fecha_inicio).toISOString() : null,
+        fecha_fin         : form.fecha_fin    ? new Date(form.fecha_fin).toISOString()    : null,
+        location_nombre   : form.location_nombre || null,
+        location_direccion: form.location_direccion || null,
+        links             : (form.links || []).filter(l => l.url?.trim()),
+        cover_url         : form.cover_url || (form.gallery?.[0]) || null,
+        gallery           : form.gallery || [],
+        aforo_total       : form.aforo_total ? Number(form.aforo_total) : null,
       };
       const data = await eventosApi.create(payload);
-      success('Evento creado exitosamente como borrador.');
+      success('Evento creado como borrador.');
       navigate(`/eventos/${data.evento.id}`);
     } catch (e) {
       error(e.message);
@@ -54,14 +72,12 @@ export default function EventCreatePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-[fadeUp_0.4s_ease_both]">
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-text-2">
         <Link to="/eventos" className="hover:text-text-1 transition-colors">Eventos</Link>
         <ChevronIcon className="w-3 h-3 text-text-3" />
         <span className="text-text-1">Crear evento</span>
       </nav>
 
-      {/* Step indicator */}
       <div className="flex items-center gap-1">
         {STEPS.map((s, i) => (
           <div key={i} className="flex items-center gap-1 flex-1">
@@ -89,14 +105,14 @@ export default function EventCreatePage() {
           <h3 className="text-sm font-semibold text-text-1">{STEPS[step]}</h3>
           <span className="text-xs text-text-3">{step + 1} de {STEPS.length}</span>
         </div>
-        <div className="card-body space-y-4">
+        <div key={step} className="card-body space-y-4 animate-[fadeUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]">
 
           {step === 0 && (
             <>
               <div className="field">
-                <label className="label">Nombre del evento *</label>
+                <label className="label">Título del evento *</label>
                 <input type="text" className="input" placeholder="Ej: Tech Summit 2026"
-                  value={form.nombre} onChange={e => update('nombre', e.target.value)} required />
+                  value={form.titulo} onChange={e => update('titulo', e.target.value)} required />
               </div>
               <div className="field">
                 <label className="label">Descripción</label>
@@ -105,6 +121,13 @@ export default function EventCreatePage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="field">
+                  <label className="label">Categoría</label>
+                  <select className="input bg-surface-2" value={form.categoria_id} onChange={e => update('categoria_id', e.target.value)}>
+                    <option value="">Sin categoría</option>
+                    {cats.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="field">
                   <label className="label">Modalidad *</label>
                   <select className="input bg-surface-2" value={form.modalidad} onChange={e => update('modalidad', e.target.value)}>
                     <option value="fisico">Físico</option>
@@ -112,135 +135,105 @@ export default function EventCreatePage() {
                     <option value="hibrido">Híbrido</option>
                   </select>
                 </div>
-                <div className="field">
-                  <label className="label">Visibilidad</label>
-                  <select className="input bg-surface-2" value={form.visibilidad} onChange={e => update('visibilidad', e.target.value)}>
-                    <option value="publico">Público</option>
-                    <option value="privado">Privado</option>
-                  </select>
-                </div>
-              </div>
-              <div className="field">
-                <label className="label">URL imagen de portada</label>
-                <input type="url" className="input" placeholder="https://..."
-                  value={form.imagen_portada} onChange={e => update('imagen_portada', e.target.value)} />
               </div>
             </>
           )}
 
           {step === 1 && (
             <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="field">
-                  <label className="label">Fecha de inicio</label>
-                  <input type="datetime-local" className="input bg-surface-2"
-                    value={form.fecha_inicio} onChange={e => update('fecha_inicio', e.target.value)} />
-                </div>
-                <div className="field">
-                  <label className="label">Fecha de fin</label>
-                  <input type="datetime-local" className="input bg-surface-2"
-                    value={form.fecha_fin} onChange={e => update('fecha_fin', e.target.value)} />
-                </div>
-              </div>
-              {(form.modalidad === 'fisico' || form.modalidad === 'hibrido') && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="field">
-                      <label className="label">Ciudad *</label>
-                      <input type="text" className="input" placeholder="Bogotá"
-                        value={form.ubicacion.ciudad} onChange={e => updateUbic('ciudad', e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Lugar / Venue</label>
-                      <input type="text" className="input" placeholder="Centro de Convenciones"
-                        value={form.ubicacion.lugar} onChange={e => updateUbic('lugar', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label className="label">Dirección</label>
-                    <input type="text" className="input" placeholder="Calle 26 # 59-51"
-                      value={form.ubicacion.direccion} onChange={e => updateUbic('direccion', e.target.value)} />
-                  </div>
-                </>
-              )}
-              {(form.modalidad === 'virtual' || form.modalidad === 'hibrido') && (
-                <div className="field">
-                  <label className="label">Link de streaming *</label>
-                  <input type="url" className="input" placeholder="https://zoom.us/j/..."
-                    value={form.ubicacion.link_streaming} onChange={e => updateUbic('link_streaming', e.target.value)} />
-                </div>
-              )}
+              <CoverUploader
+                value={form.cover_url}
+                onChange={url => update('cover_url', url)}
+                ownerId={usuario?.id}
+              />
+              <GalleryUploader
+                value={form.gallery}
+                onChange={urls => update('gallery', urls)}
+                ownerId={usuario?.id}
+                label="Galería adicional"
+              />
+              <p className="text-xs text-text-3 leading-relaxed -mt-1">
+                La portada se ve grande en la página pública del evento. La galería aparece debajo como carrusel.
+              </p>
             </>
           )}
 
           {step === 2 && (
-            <div className="space-y-3">
-              {form.entradas.map((entrada, i) => (
-                <div key={i} className="bg-surface-2 rounded-xl p-4 border border-border space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-1">Entrada #{i + 1}</span>
-                    {form.entradas.length > 1 && (
-                      <button onClick={() => removeEntrada(i)} className="text-xs text-danger hover:underline">Eliminar</button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="field">
-                      <label className="label">Tipo *</label>
-                      <input type="text" className="input" placeholder="General / VIP"
-                        value={entrada.tipo} onChange={e => updateEnt(i, 'tipo', e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Precio (COP)</label>
-                      <input type="number" min="0" className="input"
-                        value={entrada.precio} onChange={e => updateEnt(i, 'precio', e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Capacidad *</label>
-                      <input type="number" min="1" className="input"
-                        value={entrada.capacidad} onChange={e => updateEnt(i, 'capacidad', e.target.value)} />
-                    </div>
+            <>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="field">
+                  <label className="label">Fecha de inicio *</label>
+                  <DateTimePicker
+                    value={form.fecha_inicio}
+                    onChange={v => update('fecha_inicio', v)}
+                    minDate={new Date()}
+                    placeholder="Selecciona inicio"
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">Fecha de fin</label>
+                  <DateTimePicker
+                    value={form.fecha_fin}
+                    onChange={v => update('fecha_fin', v)}
+                    minDate={form.fecha_inicio || new Date()}
+                    placeholder="Selecciona fin"
+                  />
+                </div>
+              </div>
+              {(form.modalidad === 'fisico' || form.modalidad === 'hibrido') && (
+                <>
+                  <div className="field">
+                    <label className="label">Lugar / Venue</label>
+                    <input type="text" className="input" placeholder="Centro de Convenciones — Bogotá"
+                      value={form.location_nombre} onChange={e => update('location_nombre', e.target.value)} />
                   </div>
                   <div className="field">
-                    <label className="label">Descripción</label>
-                    <input type="text" className="input" placeholder="Acceso general al evento"
-                      value={entrada.descripcion} onChange={e => updateEnt(i, 'descripcion', e.target.value)} />
+                    <label className="label">Dirección</label>
+                    <input type="text" className="input" placeholder="Calle 26 # 59-51"
+                      value={form.location_direccion} onChange={e => update('location_direccion', e.target.value)} />
                   </div>
-                </div>
-              ))}
-              <button onClick={addEntrada} className="btn-secondary w-full">
-                <PlusIcon className="w-4 h-4" />
-                Agregar tipo de entrada
-              </button>
-            </div>
+                </>
+              )}
+              <LinksEditor
+                value={form.links}
+                onChange={links => update('links', links)}
+                title={form.modalidad === 'fisico' ? 'Redes sociales del evento' : 'Streaming y redes sociales'}
+              />
+
+              <div className="field">
+                <label className="label">Aforo total (capacidad estimada)</label>
+                <input type="number" min="0" className="input" placeholder="100"
+                  value={form.aforo_total} onChange={e => update('aforo_total', e.target.value)} />
+                <p className="text-xs text-text-3 mt-1.5">Capacidad estimada total. Los tipos de ticket con cupos detallados se configuran después de crear el evento.</p>
+              </div>
+            </>
           )}
 
           {step === 3 && (
             <div className="space-y-3">
-              <ReviewRow label="Nombre"      value={form.nombre || '—'} />
-              <ReviewRow label="Modalidad"   value={form.modalidad}     />
-              <ReviewRow label="Visibilidad" value={form.visibilidad}   />
-              <ReviewRow label="Fecha inicio" value={form.fecha_inicio ? new Date(form.fecha_inicio).toLocaleString('es-CO') : '—'} />
-              {form.modalidad !== 'virtual' && (
-                <ReviewRow label="Ciudad / Venue" value={[form.ubicacion.ciudad, form.ubicacion.lugar].filter(Boolean).join(' — ') || '—'} />
-              )}
-              {form.modalidad !== 'fisico' && (
-                <ReviewRow label="Streaming" value={form.ubicacion.link_streaming || '—'} />
-              )}
-              <div className="pt-1">
-                <p className="label mb-2">Entradas</p>
-                {form.entradas.map((e, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <span className="text-sm text-text-1">{e.tipo}</span>
-                    <span className="text-sm text-text-2">
-                      {Number(e.precio) === 0 ? 'Gratis' : `$${Number(e.precio).toLocaleString()}`}
-                      {' · '}{e.capacidad} cupos
+              {(form.cover_url || form.gallery?.length > 0) && (
+                <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-border-2 mb-3">
+                  <img src={form.cover_url || form.gallery[0]} alt="Portada" className="w-full h-full object-cover" />
+                  {form.gallery?.length > 0 && (
+                    <span className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-bg/85 backdrop-blur-sm border border-border-2 text-xs text-text-1 font-medium">
+                      +{form.gallery.length} en galería
                     </span>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              )}
+              <ReviewRow label="Título"        value={form.titulo || '—'} />
+              <ReviewRow label="Modalidad"     value={form.modalidad} />
+              <ReviewRow label="Categoría"     value={cats.find(c => c.id === form.categoria_id)?.nombre || '—'} />
+              <ReviewRow label="Fecha inicio"  value={form.fecha_inicio ? new Date(form.fecha_inicio).toLocaleString('es-CO') : '—'} />
+              <ReviewRow label="Fecha fin"     value={form.fecha_fin    ? new Date(form.fecha_fin).toLocaleString('es-CO')    : '—'} />
+              {form.modalidad !== 'virtual' && (
+                <ReviewRow label="Lugar" value={[form.location_nombre, form.location_direccion].filter(Boolean).join(' — ') || '—'} />
+              )}
+              <ReviewRow label="Links" value={`${(form.links || []).filter(l => l.url?.trim()).length} agregado(s)`} />
+              <ReviewRow label="Aforo" value={form.aforo_total || '—'} />
               <div className="flex items-center gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20 text-sm text-warning">
                 <InfoIcon className="w-4 h-4 flex-shrink-0" />
-                El evento se creará como <strong>borrador</strong>. Podrás publicarlo cuando esté listo.
+                El evento se creará como <strong>borrador</strong>. Lo puedes publicar cuando esté listo.
               </div>
             </div>
           )}
@@ -256,7 +249,7 @@ export default function EventCreatePage() {
           {step < STEPS.length - 1 ? (
             <button
               onClick={() => setStep(s => s + 1)}
-              disabled={step === 0 && !form.nombre.trim()}
+              disabled={(step === 0 && !form.titulo.trim()) || (step === 2 && !form.fecha_inicio)}
               className="btn-primary"
             >
               Continuar →
@@ -281,9 +274,6 @@ function ReviewRow({ label, value }) {
   );
 }
 
-function PlusIcon({ className }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>;
-}
 function ChevronIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
 }

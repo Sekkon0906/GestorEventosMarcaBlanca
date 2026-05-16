@@ -5,14 +5,22 @@
 @layer base {
   :root {
     --radius: 0.75rem;
-    --sidebar-w: 240px;
+    --sidebar-w: 264px;
   }
 
-  html { color-scheme: dark; scroll-behavior: smooth; }
+  html {
+    color-scheme: dark; scroll-behavior: smooth;
+    font-size: 16.5px; /* sube base ~3% */
+  }
+  @media (min-width: 1024px) { html { font-size: 17px; } }
 
   body {
-    @apply bg-bg text-text-1 font-sans antialiased;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgba(255,255,255,0.025)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e");
+    @apply bg-bg text-text-1 font-sans antialiased text-base;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(59,130,246,0.10), transparent 60%),
+      radial-gradient(ellipse 50% 35% at 100% 100%, rgba(139,92,246,0.08), transparent 70%),
+      url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgba(255,255,255,0.025)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e");
+    background-attachment: fixed;
   }
 
   * { box-sizing: border-box; }
@@ -29,7 +37,7 @@
 
   /* ── Buttons ─────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-sm
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-[15px]
            transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
            focus-visible:ring-offset-bg disabled:opacity-40 disabled:pointer-events-none select-none;
   }
@@ -52,7 +60,7 @@
     @apply btn bg-gradient-primary text-white shadow-glow hover:shadow-glow
            focus-visible:ring-primary active:scale-95;
   }
-  .btn-sm  { @apply text-xs px-3 py-1.5 rounded-lg; }
+  .btn-sm  { @apply text-sm px-3.5 py-2 rounded-lg; }
   .btn-lg  { @apply text-base px-6 py-3 rounded-2xl; }
   .btn-icon { @apply btn p-2 rounded-xl; }
 
@@ -74,16 +82,16 @@
 
   /* ── Inputs ──────────────────────────────────── */
   .input {
-    @apply w-full px-4 py-2.5 bg-surface-2 border border-border rounded-xl text-sm text-text-1
+    @apply w-full px-4 py-2.5 bg-surface-2 border border-border rounded-xl text-base text-text-1
            placeholder-text-3 transition-all duration-200
            focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50;
   }
   .input-icon { @apply pl-10; }
-  .label      { @apply block text-xs font-medium text-text-2 mb-1.5 uppercase tracking-wide; }
+  .label      { @apply block text-[13px] font-semibold text-text-2 mb-2 uppercase tracking-wider; }
   .field      { @apply space-y-1.5; }
 
   /* ── Badges ──────────────────────────────────── */
-  .badge { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium; }
+  .badge { @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium; }
   .badge-blue   { @apply badge bg-primary/15 text-primary-light border border-primary/20; }
   .badge-purple { @apply badge bg-accent/15 text-accent-light border border-accent/20; }
   .badge-green  { @apply badge bg-success/15 text-success-light border border-success/20; }
@@ -94,19 +102,19 @@
 
   /* ── Sidebar navigation ───────────────────────── */
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-2
+    @apply flex items-center gap-3 px-3.5 py-3 rounded-xl text-base font-medium text-text-2
            transition-all duration-150 cursor-pointer select-none
            hover:text-text-1 hover:bg-surface-2;
   }
   .nav-item.active {
     @apply text-primary-light bg-primary/10 border border-primary/15;
   }
-  .nav-section { @apply text-[10px] font-semibold uppercase tracking-widest text-text-3 px-3 mb-1 mt-5 first:mt-0; }
+  .nav-section { @apply text-xs font-semibold uppercase tracking-widest text-text-3 px-3.5 mb-1.5 mt-6 first:mt-1; }
 
   /* ── Table ───────────────────────────────────── */
   .table-wrap { @apply overflow-x-auto; }
   .table      { @apply w-full text-sm; }
-  .th         { @apply text-left text-[11px] font-semibold uppercase tracking-wider text-text-3 px-4 py-3 border-b border-border; }
+  .th         { @apply text-left text-xs font-semibold uppercase tracking-wider text-text-3 px-4 py-3 border-b border-border; }
   .td         { @apply px-4 py-3.5 text-text-1; }
   .tr         { @apply border-b border-border last:border-0 transition-colors hover:bg-surface-2/50; }
 

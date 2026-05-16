@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import logoG from '../../assets/logo-g.svg';
 
 const NAV_SECTIONS = [
   {
@@ -18,7 +19,7 @@ const NAV_SECTIONS = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobile = false, onClose }) {
   const { usuario, logout, hasPermiso } = useAuth();
   const navigate = useNavigate();
 
@@ -31,21 +32,37 @@ export default function Sidebar() {
     .join('')
     .toUpperCase() || 'U';
 
+  /* Pro = futuro. Por ahora se marca solo si el usuario tiene plan='pro' en metadata.
+     Cuando construyamos el upgrade flow, esto se reemplaza con la suscripción real. */
+  const esPro = usuario?.raw?.user_metadata?.plan === 'pro';
+
   return (
-    <aside className="w-[var(--sidebar-w)] flex-shrink-0 bg-surface border-r border-border flex flex-col">
+    <aside className={`${mobile ? 'w-full' : 'w-[var(--sidebar-w)]'} h-full flex-shrink-0 bg-surface border-r border-border flex flex-col`}>
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-primary shadow-glow-sm flex items-center justify-center flex-shrink-0">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+      <div className="px-4 py-5 border-b border-border flex items-center justify-between gap-2">
+        <NavLink to="/dashboard" className="flex items-center gap-3 group flex-1 min-w-0">
+          <img
+            src={logoG}
+            alt="GESTEK"
+            className={`w-10 h-10 flex-shrink-0 transition-transform group-hover:scale-110 animate-[wheelSpin_0.9s_cubic-bezier(0.6,-0.05,0.2,1.05)_both,float_5s_ease-in-out_0.9s_infinite] ${
+              esPro ? 'drop-shadow-[0_0_14px_rgba(139,92,246,0.55)]' : 'drop-shadow-[0_0_10px_rgba(59,130,246,0.35)]'
+            }`}
+          />
+          <div className="min-w-0">
+            <span className="font-display font-bold text-text-1 text-base tracking-tight block leading-tight">GESTEK</span>
+            <p className={`text-[11px] leading-none mt-0.5 font-semibold uppercase tracking-widest ${
+              esPro ? 'text-accent-light' : 'text-text-3'
+            }`}>
+              {esPro ? 'Pro' : 'Free'}
+            </p>
           </div>
-          <div>
-            <span className="font-display font-bold text-text-1 text-sm tracking-tight">GESTEK</span>
-            <p className="text-[10px] text-text-3 leading-none mt-0.5">Event OS</p>
-          </div>
-        </div>
+        </NavLink>
+        {mobile && (
+          <button onClick={onClose} aria-label="Cerrar"
+            className="w-9 h-9 rounded-lg text-text-3 hover:text-text-1 hover:bg-surface-2 flex items-center justify-center transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -61,7 +78,7 @@ export default function Sidebar() {
                   to={to}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <Icon className="w-[18px] h-[18px] flex-shrink-0" />
                   <span>{label}</span>
                 </NavLink>
               );
@@ -72,17 +89,19 @@ export default function Sidebar() {
 
       {/* User footer */}
       <div className="px-2 pb-3 pt-2 border-t border-border space-y-1">
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl">
-          <div className="w-7 h-7 rounded-lg bg-gradient-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-semibold text-[11px]">{initials}</span>
+        <NavLink to="/configuracion" className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-surface-2 transition-colors">
+          <div className="w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-primary flex items-center justify-center">
+            {usuario?.foto
+              ? <img src={usuario.foto} alt={usuario.nombre} className="w-full h-full object-cover" />
+              : <span className="text-white font-semibold text-base">{initials}</span>}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-text-1 truncate">{usuario?.nombre}</p>
-            <p className="text-[10px] text-text-3 truncate">{usuario?.email}</p>
+            <p className="text-[15px] font-semibold text-text-1 truncate leading-tight">{usuario?.nombre}</p>
+            <p className="text-xs text-text-3 truncate mt-0.5">{usuario?.email}</p>
           </div>
-        </div>
-        <button onClick={handleLogout} className="nav-item w-full text-danger/70 hover:text-danger hover:bg-danger/10">
-          <LogoutIcon className="w-4 h-4 flex-shrink-0" />
+        </NavLink>
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] font-medium text-danger/80 hover:text-danger hover:bg-danger/10 transition-all">
+          <LogoutIcon className="w-[18px] h-[18px] flex-shrink-0" />
           <span>Cerrar sesión</span>
         </button>
       </div>
