@@ -121,10 +121,10 @@ router.post('/slug/:slug/reservar', async (req, res) => {
     return res.status(400).json({ error: 'La venta de este tipo de boleta ya cerró.' });
   }
   if (tipo.cupo != null && tipo.vendidos >= tipo.cupo) {
-    return res.status(400).json({ error: 'Este tipo de boleta está agotado.' });
+    return res.status(400).json({ error: 'Este tipo de boleta está agotado.', waitlistAvailable: true });
   }
   if (evento.aforo_total && evento.aforo_vendido >= evento.aforo_total) {
-    return res.status(400).json({ error: 'El evento está al aforo máximo.' });
+    return res.status(400).json({ error: 'El evento está al aforo máximo.', waitlistAvailable: true });
   }
 
   /* Precio efectivo: Early Bird si aplica, si no normal */
@@ -218,6 +218,68 @@ router.get('/slug/:slug', async (req, res) => {
   }
 
   res.json({ evento: data, isPreview: data.estado !== 'publicado' });
+});
+
+/* POST /eventos/publicos/slug/:slug/waitlist — unirse a la lista de espera.
+   No requiere auth. Si el usuario está logueado (verifySupabaseJWTOptional) se vincula su user_id. */
+router.post('/slug/:slug/waitlist', async (req, res) => {
+  const { slug } = req.params;
+  const { ticket_type_id, email, nombre } = req.body;
+
+  if (!ticket_type_id)       return res.status(400).json({ error: 'Selecciona un tipo de boleta.' });
+  if (!email?.includes('@')) return res.status(400).json({ error: 'Email válido requerido.' });
+  if (!nombre?.trim())       return res.status(400).json({ error: 'Tu nombre es requerido.' });
+
+  const { data: evento, error: e1 } = await supabase
+    .from('eventos')
+    .select('id, estado, deleted_at')
+    .eq('slug', slug).maybeSingle();
+  if (e1) return res.status(500).json({ error: e1.message });
+  if (!evento || evento.deleted_at || evento.estado !== 'publicado')
+    return res.status(404).json({ error: 'Evento no disponible.' });
+
+  const { data: tipo, error: e2 } = await supabase
+    .from('ticket_types')
+    .select('id, nombre, activo')
+    .eq('id', ticket_type_id)
+    .eq('evento_id', evento.id)
+    .maybeSingle();
+  if (e2) return res.status(500).json({ error: e2.message });
+  if (!tipo)        return res.status(404).json({ error: 'Tipo de boleta no encontrado.' });
+  if (!tipo.activo) return res.status(400).json({ error: 'Este tipo de boleta no está disponible.' });
+
+  /* posicion = max(posicion) + 1 para este evento+tipo */
+  const { data: maxRow } = await supabase
+    .from('event_waitlist')
+    .select('posicion')
+    .eq('evento_id', evento.id)
+    .eq('ticket_type_id', tipo.id)
+    .order('posicion', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const posicion = (maxRow?.posicion || 0) + 1;
+
+  const { data: entry, error: e3 } = await supabase
+    .from('event_waitlist')
+    .insert({
+      evento_id     : evento.id,
+      ticket_type_id: tipo.id,
+      user_id       : req.user?.id || null,
+      guest_email   : email.toLowerCase().trim(),
+      guest_nombre  : nombre.trim(),
+      posicion,
+    })
+    .select('id, posicion, estado, added_at')
+    .single();
+
+  if (e3) {
+    if (e3.code === '23505') {
+      return res.status(409).json({ error: 'Ya estás en la lista de espera para este tipo de boleta.' });
+    }
+    return res.status(500).json({ error: e3.message });
+  }
+
+  res.status(201).json({ entry });
 });
 
 module.exports = router;
