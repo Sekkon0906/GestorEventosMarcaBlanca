@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const supabase = require('../lib/supabase.js');
 const { verifySupabaseJWTOptional } = require('../middleware/auth.js');
 const { signTicketQR } = require('../lib/qr.js');
+const { notificar } = require('../lib/notificar.js');
 
 function visitorHash(req) {
   const ip = (req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '').trim();
@@ -36,7 +37,7 @@ router.get('/', async (req, res) => {
        fecha_inicio, fecha_fin, location_nombre, location_direccion,
        currency,
        categoria:categorias(slug, nombre),
-       organizador:profiles!owner_id(nombre, handle, avatar_url, empresa)`,
+       organizador:profiles!owner_id(nombre, handle, avatar_url, empresa, branding, empresa_logo_url)`,
       { count: 'exact' }
     )
     .eq('estado', 'publicado')
@@ -100,7 +101,7 @@ router.post('/slug/:slug/reservar', async (req, res) => {
   /* Trae el evento + el tipo de ticket que quieren reservar */
   const { data: evento, error: e1 } = await supabase
     .from('eventos')
-    .select('id, estado, deleted_at, aforo_total, aforo_vendido, pago_llave, pago_qr_url, pago_instrucciones')
+    .select('id, owner_id, titulo, estado, deleted_at, aforo_total, aforo_vendido, pago_llave, pago_qr_url, pago_instrucciones')
     .eq('slug', slug).maybeSingle();
   if (e1) return res.status(500).json({ error: e1.message });
   if (!evento || evento.deleted_at || evento.estado !== 'publicado')
@@ -170,10 +171,69 @@ router.post('/slug/:slug/reservar', async (req, res) => {
     await supabase.from('eventos').update({ aforo_vendido: (evento.aforo_vendido || 0) + 1 }).eq('id', evento.id);
   }
 
+  /* Notifica al organizador (best-effort) */
+  notificar({
+    userId : evento.owner_id,
+    tipo   : 'reserva',
+    titulo : esGratis ? 'Nueva reserva' : 'Nueva boleta emitida',
+    cuerpo : `${nombre.trim()} reservó "${tipo.nombre}" en ${evento.titulo}.`,
+    link   : `/eventos/${evento.id}`,
+    eventoId: evento.id,
+  });
+
   res.status(201).json({
     ticket: { id: ticket.id, codigo: ticket.codigo, estado: ticket.estado },
     requierePago: !esGratis,
   });
+});
+
+/* POST /eventos/publicos/slug/:slug/waitlist — anotarse en lista de espera.
+   Público (sin auth). Se usa cuando el ticket_type está agotado. */
+router.post('/slug/:slug/waitlist', async (req, res) => {
+  const { slug } = req.params;
+  const { ticket_type_id, nombre, email, telefono } = req.body;
+
+  if (!email?.includes('@')) return res.status(400).json({ error: 'Email válido requerido.' });
+  if (!nombre?.trim())       return res.status(400).json({ error: 'Tu nombre es requerido.' });
+
+  const { data: evento, error: e1 } = await supabase
+    .from('eventos').select('id, owner_id, titulo, estado, deleted_at')
+    .eq('slug', slug).maybeSingle();
+  if (e1) return res.status(500).json({ error: e1.message });
+  if (!evento || evento.deleted_at || evento.estado !== 'publicado')
+    return res.status(404).json({ error: 'Evento no disponible.' });
+
+  /* Posición = cantidad de gente esperando + 1 (para ese tipo) */
+  const { count } = await supabase
+    .from('waitlist')
+    .select('id', { count: 'exact', head: true })
+    .eq('evento_id', evento.id)
+    .eq('estado', 'esperando');
+
+  const { error: e2 } = await supabase.from('waitlist').insert({
+    evento_id     : evento.id,
+    ticket_type_id: ticket_type_id || null,
+    guest_nombre  : nombre.trim(),
+    guest_email   : email.toLowerCase().trim(),
+    guest_telefono: telefono || null,
+    posicion      : (count || 0) + 1,
+  });
+
+  if (e2) {
+    if (e2.code === '23505') return res.status(409).json({ error: 'Ya estás en la lista de espera.' });
+    return res.status(500).json({ error: e2.message });
+  }
+
+  notificar({
+    userId : evento.owner_id,
+    tipo   : 'reserva',
+    titulo : 'Nuevo en lista de espera',
+    cuerpo : `${nombre.trim()} se anotó a la lista de espera de ${evento.titulo}.`,
+    link   : `/eventos/${evento.id}`,
+    eventoId: evento.id,
+  });
+
+  res.status(201).json({ ok: true, posicion: (count || 0) + 1 });
 });
 
 /* GET /eventos/publicos/slug/:slug — evento por slug.
@@ -190,7 +250,7 @@ router.get('/slug/:slug', async (req, res) => {
        page_json, currency, edad_minima, aforo_total, aforo_vendido,
        pago_llave, pago_qr_url, pago_instrucciones,
        categoria:categorias(slug, nombre),
-       organizador:profiles!owner_id(nombre, handle, avatar_url, empresa, ciudad),
+       organizador:profiles!owner_id(nombre, handle, avatar_url, empresa, ciudad, branding, empresa_logo_url, plan, plan_expires_at),
        tipos_ticket:ticket_types(id, nombre, descripcion, precio, currency, cupo, vendidos, early_bird_precio, early_bird_hasta, venta_hasta, zonas_acceso, activo)`
     )
     .eq('slug', req.params.slug)
@@ -203,6 +263,15 @@ router.get('/slug/:slug', async (req, res) => {
   const esOwner = req.user && req.user.id === data.owner_id;
   if (data.estado !== 'publicado' && !esOwner) {
     return res.status(404).json({ error: 'Evento no encontrado.' });
+  }
+
+  /* Normaliza plan del organizador: considera 'pro' solo si está vigente.
+     Esto evita white-label fantasma cuando el plan venció. */
+  if (data.organizador) {
+    const exp = data.organizador.plan_expires_at;
+    const proActivo = data.organizador.plan === 'pro' && (!exp || new Date(exp) > new Date());
+    data.organizador.plan = proActivo ? 'pro' : 'free';
+    delete data.organizador.plan_expires_at;
   }
 
   /* Track visit: solo si está publicado y el visitante NO es el owner */

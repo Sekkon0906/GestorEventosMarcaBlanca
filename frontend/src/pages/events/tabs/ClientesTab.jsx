@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { clientesApi } from '../../../api/clientes.js';
 import { ticketsApi } from '../../../api/tickets.js';
+import { waitlistApi } from '../../../api/waitlist.js';
 import { useToast } from '../../../context/ToastContext.jsx';
 import Spinner from '../../../components/ui/Spinner.jsx';
 import GLoader from '../../../components/ui/GLoader.jsx';
@@ -27,6 +28,7 @@ export default function ClientesTab({ evento }) {
   const [q, setQ]             = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [vista, setVista] = useState('clientes'); // clientes | waitlist
   const { success, error: toastErr } = useToast();
 
   const reload = async () => {
@@ -65,11 +67,35 @@ export default function ClientesTab({ evento }) {
           <h2 className="text-2xl font-bold font-display text-text-1 tracking-tight">Clientes</h2>
           <p className="text-sm text-text-2 mt-1">Personas que han reservado o comprado boletas para este evento.</p>
         </div>
-        <button onClick={() => setImportOpen(true)} className="btn-secondary btn-sm">
-          <UploadIcon className="w-3.5 h-3.5" /> Importar CSV
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-surface-2 border border-border rounded-xl p-1">
+            {[['clientes', 'Clientes'], ['waitlist', 'Lista de espera']].map(([k, l]) => (
+              <button key={k} onClick={() => setVista(k)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${vista === k ? 'bg-surface-3 text-text-1' : 'text-text-3 hover:text-text-2'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+          {vista === 'clientes' && (
+            <>
+              <button
+                onClick={() => exportarCSV(clientes, evento)}
+                disabled={clientes.length === 0}
+                className="btn-secondary btn-sm"
+                title="Descarga un CSV con todos los clientes (respeta filtros activos)">
+                <DownloadIcon className="w-3.5 h-3.5" /> Exportar CSV
+              </button>
+              <button onClick={() => setImportOpen(true)} className="btn-secondary btn-sm">
+                <UploadIcon className="w-3.5 h-3.5" /> Importar CSV
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
+      {vista === 'waitlist' && <WaitlistPanel evento={evento} />}
+
+      {vista === 'clientes' && (<>
       {/* Stats compactos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatBox label="Total"        value={stats.total} />
@@ -115,6 +141,7 @@ export default function ClientesTab({ evento }) {
           ))}
         </div>
       )}
+      </>)}
 
       {importOpen && (
         <ImportModal
@@ -127,6 +154,118 @@ export default function ClientesTab({ evento }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/* ─────────── Lista de espera ─────────── */
+
+const WL_ESTADO = {
+  esperando : { label: 'Esperando',  cls: 'bg-warning/10 text-warning border-warning/20' },
+  promovido : { label: 'Promovido',  cls: 'bg-primary/10 text-primary-light border-primary/20' },
+  convertido: { label: 'Convirtió',  cls: 'bg-success/10 text-success border-success/20' },
+  cancelado : { label: 'Cancelado',  cls: 'bg-text-3/10 text-text-2 border-border' },
+};
+
+function WaitlistPanel({ evento }) {
+  const [data, setData]     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy]     = useState(null);
+  const { success, error: toastErr } = useToast();
+
+  const reload = async () => {
+    setLoading(true);
+    try { setData(await waitlistApi.list(evento.id)); }
+    catch (e) { toastErr(e.message); }
+    finally   { setLoading(false); }
+  };
+
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [evento.id]);
+
+  const promover = async (w) => {
+    setBusy(w.id);
+    try {
+      const r = await waitlistApi.promover(evento.id, w.id);
+      success(r.tiene_cuenta
+        ? `${w.guest_nombre} promovido y notificado in-app.`
+        : `${w.guest_nombre} promovido. Avisale por email: ${r.email}`);
+      reload();
+    } catch (e) { toastErr(e.response?.data?.error || e.message); }
+    finally     { setBusy(null); }
+  };
+
+  const quitar = async (w) => {
+    if (!window.confirm(`¿Quitar a ${w.guest_nombre} de la lista de espera?`)) return;
+    setBusy(w.id);
+    try { await waitlistApi.quitar(evento.id, w.id); success('Quitado.'); reload(); }
+    catch (e) { toastErr(e.message); }
+    finally   { setBusy(null); }
+  };
+
+  if (loading) return <GLoader message="Cargando lista de espera..." />;
+
+  const lista = data?.waitlist || [];
+  const stats = data?.stats || { total: 0 };
+
+  if (lista.length === 0) {
+    return (
+      <div className="rounded-3xl border border-border bg-surface/40 px-6 py-16 text-center">
+        <h2 className="text-lg font-bold font-display text-text-1 tracking-tight mb-1">Lista de espera vacía</h2>
+        <p className="text-sm text-text-2 leading-relaxed max-w-sm mx-auto">
+          Cuando un tipo de boleta se agote, los interesados podrán anotarse desde la página pública y aparecerán acá.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatBox label="Total"      value={stats.total} />
+        <StatBox label="Esperando"  value={stats.esperando || 0} />
+        <StatBox label="Promovidos" value={stats.promovido || 0} />
+        <StatBox label="Convirtieron" value={stats.convertido || 0} />
+      </div>
+
+      <div className="rounded-3xl border border-border bg-surface/40 overflow-hidden">
+        {lista.map((w, i) => {
+          const est = WL_ESTADO[w.estado] || WL_ESTADO.esperando;
+          return (
+            <div key={w.id}
+              className="flex items-center gap-3 px-5 py-3.5 border-b border-border last:border-0 hover:bg-surface-2/30 transition-colors animate-[fadeUp_0.3s_ease_both] group"
+              style={{ animationDelay: `${i * 25}ms` }}>
+              <div className="w-8 text-center text-sm font-bold font-display text-text-3 tabular-nums flex-shrink-0">
+                {w.posicion ? `#${w.posicion}` : '—'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text-1 truncate">{w.guest_nombre}</p>
+                <p className="text-xs text-text-3 truncate">{w.guest_email}{w.guest_telefono ? ` · ${w.guest_telefono}` : ''}</p>
+              </div>
+              <div className="hidden md:block text-right">
+                <p className="text-xs font-medium text-text-1">{w.tipo?.nombre || 'Cualquiera'}</p>
+                <p className="text-[11px] text-text-3 tabular-nums">
+                  {new Date(w.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                </p>
+              </div>
+              <span className={`text-[10px] uppercase tracking-widest font-semibold px-2.5 py-1 rounded-full border ${est.cls}`}>
+                {est.label}
+              </span>
+              <div className="flex items-center gap-1">
+                {w.estado === 'esperando' && (
+                  <button onClick={() => promover(w)} disabled={busy === w.id}
+                    className="btn-primary btn-sm" title="Marcar como promovido y avisarle">
+                    {busy === w.id ? <Spinner size="sm" /> : 'Promover'}
+                  </button>
+                )}
+                <button onClick={() => quitar(w)} disabled={busy === w.id} aria-label="Quitar"
+                  className="w-8 h-8 rounded-lg text-text-3 hover:text-danger hover:bg-danger/10 flex items-center justify-center transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -458,6 +597,46 @@ function downloadTemplate() {
   a.href = url; a.download = 'plantilla-asistentes.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportarCSV(clientes, evento) {
+  if (!clientes?.length) return;
+
+  /* Headers + filas. Quote-escape básico (envolvemos siempre en comillas, escapamos las internas). */
+  const headers = ['nombre', 'email', 'codigo', 'estado', 'tipo', 'precio_pagado', 'created_at', 'checked_in_at'];
+  const escape = (v) => {
+    if (v == null) return '';
+    const s = String(v).replace(/"/g, '""');
+    return `"${s}"`;
+  };
+  const rows = clientes.map(c => [
+    c.usuario?.nombre || c.guest_nombre || '',
+    c.usuario?.email  || c.guest_email  || '',
+    c.codigo,
+    c.estado,
+    c.tipo?.nombre || '',
+    c.precio_pagado ?? '',
+    c.created_at,
+    c.checked_in_at || '',
+  ].map(escape).join(','));
+
+  /* BOM para que Excel respete UTF-8 */
+  const csv = '﻿' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+
+  const slug = (evento?.slug || 'evento').replace(/[^a-z0-9-]/gi, '-');
+  const fecha = new Date().toISOString().slice(0, 10);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `clientes-${slug}-${fecha}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+function DownloadIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 11l5 5m0 0l5-5m-5 5V4" /></svg>;
 }
 
 function UploadIcon({ className }) {
