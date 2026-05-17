@@ -40,6 +40,7 @@ app.use('/eventos',          require('./routes/chat.js'));
 app.use('/eventos',          require('./routes/agenda.js'));
 app.use('/eventos',          require('./routes/tareas.js'));
 app.use('/eventos',          require('./routes/analytics.js'));
+app.use('/eventos',          require('./routes/waitlist.js'));
 app.use('/eventos',          require('./routes/eventos.js'));
 
 app.get('/', (_req, res) => {
