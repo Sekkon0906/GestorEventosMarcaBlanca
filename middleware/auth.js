@@ -1,51 +1,28 @@
-'use strict';
+/* Middleware: valida el access_token de Supabase Auth.
+   El front lo manda en Authorization: Bearer <token>.
+   Si es válido, deja req.user = { id, email, ... } y sigue. */
+const supabase = require('../lib/supabase.js');
 
-/**
- * middleware/auth.js
- *
- * Verifica el JWT en el header Authorization: Bearer <token>.
- * El SECRET se obtiene de config/env.js — nunca tiene fallback hardcodeado.
- * Si JWT_SECRET no está configurado, config/env.js ya habrá abortado el proceso.
- */
-
-const jwt    = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config/env');
-
-// ── verificarToken — uso en rutas protegidas ─────────────────
-const verificarToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token      = authHeader && authHeader.split(' ')[1];
-
+async function verifySupabaseJWT(req, res, next) {
+  const header = req.headers['authorization'] || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Token requerido.' });
 
-  try {
-    req.usuario = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch (err) {
-    const msg = err.name === 'TokenExpiredError'
-      ? 'Token expirado. Vuelve a iniciar sesión.'
-      : 'Token inválido.';
-    res.status(403).json({ error: msg });
-  }
-};
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return res.status(401).json({ error: 'Token inválido o expirado.' });
 
-// ── verificarTokenOpcional — para endpoints públicos con auth opcional ───
-const verificarTokenOpcional = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token      = authHeader && authHeader.split(' ')[1];
-
-  if (!token) { req.usuario = null; return next(); }
-
-  try {
-    req.usuario = jwt.verify(token, JWT_SECRET);
-  } catch {
-    req.usuario = null;
-  }
+  req.user = data.user;
   next();
-};
+}
 
-// Mantener compatibilidad con require('../middleware/auth') y require('../middleware/auth').verificarToken
-verificarToken.verificarToken         = verificarToken;
-verificarToken.verificarTokenOpcional = verificarTokenOpcional;
+/* Igual al anterior pero no bloquea si no hay token (rutas mixtas). */
+async function verifySupabaseJWTOptional(req, _res, next) {
+  const header = req.headers['authorization'] || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) { req.user = null; return next(); }
+  const { data } = await supabase.auth.getUser(token);
+  req.user = data?.user ?? null;
+  next();
+}
 
-module.exports = verificarToken;
+module.exports = { verifySupabaseJWT, verifySupabaseJWTOptional };

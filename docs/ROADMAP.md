@@ -1,96 +1,151 @@
-# GESTEK — Roadmap de desarrollo (rama MedinaDesarrollo)
+# GESTEK Event OS — Roadmap (rama `MedinaDesarrollo`)
 
-Documento maestro de funcionalidades acordadas. Las casillas marcadas son lo que ya está implementado en el repo; el resto se construye fase por fase.
+Documento maestro que fusiona el progreso real del repo con el plan del PDF
+`GestekEventos_PlanFuncional v1.0`.
+
+**Stack confirmado:**
+- **Frontend:** Vite + React 18 + React Router 6 + Tailwind CSS
+- **Backend:**  Node.js + Express (REST API en `localhost:3000`)
+- **DB / Auth / Storage / Realtime:** Supabase
+- **Comunicación front ↔ back:** JSON sobre HTTPS con JWT de Supabase Auth
 
 ---
 
-## Fase 1 — Setup y limpieza
+## Estado actual (auditado el 2026-05-14)
 
-- [x] Crear rama `MedinaDesarrollo` desde `main`
-- [x] Configurar git local con `Sekkon0906 <medinapipe123@gmail.com>` (sin Claude como co-autor)
-- [x] Eliminar todos los emojis del código fuente
-- [x] Colocar logo real (GESTEK — Manage. Automate. Scale.) en `frontend/src/assets/`
-- [x] Roadmap publicado (este archivo)
-- [ ] (Opcional) `git filter-repo` sobre commits viejos en `main` y `push --force` — requiere ejecución manual del usuario por riesgo de reescribir historia pública
+### Fase 1 — Setup ✅
+- [x] Rama `MedinaDesarrollo` desde `main`
+- [x] Git local configurado como `Sekkon0906 <medinapipe123@gmail.com>` (sin co-autor Claude)
+- [x] Emojis eliminados del código fuente
+- [x] Logo real (GESTEK) en `frontend/src/assets/`
+- [x] Roadmap publicado
+- [x] Limpieza del backend viejo (bcryptjs, schemas SQL antiguos, Docker, rutas obsoletas)
+- [ ] _(Opcional)_ `git filter-repo` sobre commits viejos en `main` + `push --force` — requiere ejecución manual
 
-## Fase 2 — Rediseño visual (estilo Apple / Anthropic, minimalista)
+### Fase 2 — Rediseño visual ✅
+- [x] Navbar píldora flotante con links + acciones
+- [x] Tipografía y espaciados estilo Apple/Anthropic
+- [x] Paleta sobria, sin neon
+- [x] Landing rediseñada (`LandingHomePage`)
+- [x] Página de login (`AuthPage` modo login)
+- [x] Página de registro 2 pasos (`AuthPage` modo register)
+- [x] Responsive en todas las vistas
+- [x] Loaders unificados (`PageLoader`, `InlineLoader`)
+- [x] Animaciones de transición entre rutas (`auth-in/out`)
 
-- [ ] **Navbar** estilo píldora flotante: logo izquierda + `Inicio · Cómo funciona · Producto · Explorar · Planes · FAQ` + `Iniciar sesión` + `Registrarse` a la derecha
-- [ ] Tipografía y espaciados estilo wireframes SEMB (sans-serif moderno, jerarquía clara, mucho aire)
-- [ ] Paleta más sobria (menos gradientes neon)
-- [ ] **Landing pública** rediseñada (estilo Eventtia hero negro, claim grande)
-- [ ] **Página de registro** estilo foto 3: hero a la izquierda + formulario en card a la derecha
-- [ ] **Página de login** rediseñada, llamativa pero limpia
-- [ ] **Responsive mobile** completo en todas las vistas
-- [ ] **Loaders / spinners** unificados en cada acción asíncrona (login, registro, submit de formularios, etc.)
-- [ ] Animaciones suaves de transición entre rutas
+### Fase 3 — Auth Supabase ✅
+- [x] Cliente Supabase JS instalado y configurado
+- [x] `AuthContext` contra Supabase Auth (login, register, logout, reset, update, resend)
+- [x] Registro en 2 pasos (datos básicos → perfil del organizador)
+- [x] Login funcional
+- [x] Recuperación de contraseña (`/recuperar`)
+- [x] Restablecer contraseña (`/restablecer`)
+- [x] Confirmación de cuenta por email (`/confirmar`)
+- [x] Sesión persistente + refresh tokens (PKCE)
+- [x] Documentación en `docs/SUPABASE_SETUP.md`
+- [x] Credenciales en `frontend/.env.local`
 
-## Fase 3 — Auth (Supabase)
+### Fase 4 — Rutas y páginas públicas ✅
+- [x] `/` — Inicio
+- [x] `/como-funciona`
+- [x] `/producto`
+- [x] `/explorar` (con datos mock por ahora — se conecta a Supabase en Fase A)
+- [x] `/explorar/:slug` (placeholder — se conecta en Fase A)
+- [x] `/planes`
+- [x] `/faq`
+- [x] `/login` y `/register` rediseñadas
 
-- [ ] Registro en **2 pasos**:
-  - Paso 1: nombre, email empresarial, teléfono, contexto del evento/empresa, contraseña
-  - Paso 2: foto de perfil, ocupación, datos del organizador
-- [ ] Todos los clientes nuevos = rol `organizador`
-- [ ] Login funcional contra Supabase Auth
-- [ ] Recuperación de contraseña por email (Supabase SMTP)
-- [ ] Confirmación de cuenta por email
-- [ ] Sesión persistente + refresh tokens
-- [ ] Botones "Acceder" e "Iniciar sesión" unificados a la misma ruta `/login`
+---
 
-## Fase 4 — Rutas y páginas públicas
+## Lo que viene — derivado del PDF `Plan Funcional v1.0`
 
-- [ ] `/` — Inicio (landing rediseñada)
-- [ ] `/como-funciona` — explicación del flujo
-- [ ] `/producto` — features completas (lo bueno que ofrece GESTEK)
-- [ ] `/explorar` — listado público de eventos de todos los organizadores
-- [ ] `/explorar/:slug` — página individual del evento (compra de boletas, info, interacción)
-- [ ] `/planes` — pricing rediseñado (Free vs Pro)
-- [ ] `/faq` — preguntas frecuentes
-- [ ] `/login` y `/register` rediseñadas
+Fases reescritas según el documento, ordenadas para que cada PR sea testeable
+de extremo a extremo. La URL pública del evento se mantiene en
+`/explorar/[slug]` (no se usa el `/handle/slug` del PDF).
 
-## Fase 5 — Módulo Eventos (FREE — todo lo principal)
+### Fase A — Núcleo de eventos contra schema nuevo
+- [ ] Aplicar `db/migrations/0001_init.sql` en Supabase (SQL Editor del proyecto)
+- [ ] Backend: middleware `verifySupabaseJWT` que valida el `access_token` de Supabase
+- [ ] Backend: endpoints CRUD de eventos contra schema nuevo
+  - `GET /eventos`, `GET /eventos/:id`, `POST /eventos`, `PATCH /eventos/:id`,
+    `DELETE /eventos/:id` (soft delete), `POST /eventos/:id/publicar`
+- [ ] Backend: `GET /eventos/publicos` (sin auth) y `GET /eventos/slug/:slug`
+- [ ] Backend: `GET /categorias` y `GET /me/profile`
+- [ ] Frontend: reescribir `api/eventos.js` contra los nuevos endpoints
+- [ ] Frontend: conectar `EventsListPage`, `EventCreatePage`, `EventDetailPage`, `DashboardPage`
+- [ ] Frontend: conectar `/explorar` y `/explorar/:slug` a datos reales
 
-Estas funciones van **todas** en el plan gratuito:
+### Fase B — Editor visual drag & drop
+- [ ] Instalar `@dnd-kit/core`, `@dnd-kit/sortable`, `@tiptap/react`
+- [ ] Esqueleto del editor con 4 bloques iniciales: Hero, Texto, Galería, FAQ
+- [ ] Persistir estructura en `eventos.page_json`
+- [ ] Renderizado dinámico en `/explorar/:slug` desde `page_json`
+- [ ] Bloques restantes: Agenda, Speakers, Patrocinadores, Mapa, Tickets, Redes, Video, Countdown
+- [ ] Vista previa mobile/desktop dentro del editor
+- [ ] SEO automático: meta tags, Open Graph, preview en WhatsApp
 
-- [ ] CRUD completo de eventos (crear / editar / publicar / archivar)
-- [ ] Flujo de creación tipo wizard de 4 pasos (info general, espacios y accesos, identidad y marca, revisión y publicar) — inspirado en wireframe foto 5
-- [ ] Página pública individual por evento (`/explorar/:slug`) con compra de boletas e interacción
-- [ ] Generación de **QR de asistencia** + escáner check-in / check-out
-- [ ] **Recordatorios por email** a los inscritos (Supabase + cron)
-- [ ] **Gamificación**: puntos por asistencia, badges, ranking
-- [ ] Inscripciones e invitaciones
-- [ ] Exportar asistentes a CSV
-- [ ] Notificaciones in-app
+### Fase C — Tickets, pagos BRE-B y compra
+- [ ] CRUD de `ticket_types` con Early Bird, cupos, códigos descuento
+- [ ] Carrito y flujo de compra desde la página pública del evento
+- [ ] Panel del organizador para configurar Nequi / Daviplata / PSE / QR BRE-B
+- [ ] Webhook `POST /webhooks/bre-b` para confirmar pagos y emitir tickets
+- [ ] Emails transaccionales con Resend (confirmación, recordatorios)
+- [ ] PDF de boleta autogenerado con el QR adjunto
+- [ ] Reembolsos manuales que invalidan el QR
 
-## Fase 6 — API, webhooks y pagos (FREE)
+### Fase D — QR y check-in en tiempo real
+- [ ] Generación de QR JWT firmado al emitir cada ticket (`qrcode` en backend)
+- [ ] Página `/scan` con `html5-qrcode` para staff
+- [ ] Endpoint `POST /tickets/:id/checkin` con validación de zona
+- [ ] Dashboard de ingreso en vivo con Supabase Realtime
+- [ ] Modo offline PWA con IndexedDB
+- [ ] Check-in manual por nombre/documento
 
-- [ ] **API pública** completa con auth por API key
-- [ ] **Webhooks** para eventos del sistema (inscripción, pago, check-in)
-- [ ] **Pasarela BRE-B**: el organizador puede pegar su llave o subir su QR para recibir pagos de boletas
-- [ ] Recibos / facturas básicas
-- [ ] Manejo de reembolsos manuales
+### Fase E — Agente IA conversacional + chat interno
+- [ ] Integración Groq (LLaMA 3) con Vercel AI SDK
+- [ ] Tool-calling: el agente crea/edita eventos por instrucción natural
+- [ ] Asistente para asistentes (preguntas sobre el evento)
+- [ ] Chat interno staff con canales por evento (Supabase Realtime)
+- [ ] Subchats por sector (acceso, logística, atención, VIP)
+- [ ] Adjuntos en mensajes (Supabase Storage)
 
-## Fase 7 — Plan Pro (comodidad y branding)
+### Fase F — Gamificación y notificaciones
+- [ ] Trigger `on_checkin_award_points` en Supabase
+- [ ] Tablas `points_log`, `user_badges`, `missions`, `referral_codes` (ya en schema)
+- [ ] UI de perfil con puntos, badges, ranking
+- [ ] Misiones y retos configurables por organizador
+- [ ] Códigos de referido con tracking
+- [ ] Push notifications con Firebase FCM
+- [ ] Recordatorios automáticos (cron `pg_cron` o cron en backend)
 
-- [ ] **Agente IA** para crear/editar eventos con lenguaje natural y generar bloques iniciales según contexto
-- [ ] **Personalización completa**: colores, tipografía, dominio
-- [ ] **White-label**: quitar marca "GESTEK", poner logo y nombre del organizador
-- [ ] Analytics avanzados
-- [ ] Soporte prioritario
-- [ ] Para que el organizador pague Pro: usa la pasarela BRE-B con la llave/QR del dueño de GESTEK
+### Fase G — Pulido, analytics y lanzamiento
+- [ ] Agenda con múltiples tracks + export iCal / PDF
+- [ ] Dashboard analytics del organizador con Recharts
+- [ ] Export CSV/Excel de asistentes y ventas
+- [ ] Mapas Google Maps / Mapbox para ubicación del evento
+- [ ] Onboarding guiado con el agente IA
+- [ ] Tests E2E críticos con Playwright (compra + check-in)
+- [ ] Optimización Lighthouse > 90
+- [ ] Documentación API y guía de usuario en `/docs`
 
-## Mejoras a lo ya implementado (sugerencias para iterar)
+---
 
-- **Landing actual** está cargada de gradientes y glows neon — bajar saturación, aumentar aire blanco/negro tipo Apple
-- **Iconos custom inline** (`BoltIcon`, etc.) → migrar a una librería consistente (lucide-react) para reducir verbosidad
-- **Mockup de dashboard en el hero** funciona pero pesa visualmente — considerar imagen estática optimizada o usar el wireframe SEMB como referencia
-- **Toast/Alert** ya existe (`ToastContext`) — extender para los nuevos loaders
-- **Estructura de carpetas**: `pages/` mezcla archivos sueltos (`LoginPage.jsx`) con subcarpetas (`events/`) — uniformar todo en subcarpetas
+## Funcionalidades post-MVP (PDF sección 10)
+
+Streaming en vivo · Encuestas en tiempo real · Reventa controlada de boletas ·
+PWA instalable · Co-organización con permisos granulares · Marketplace de
+eventos · API pública para integraciones · Certificados y memorias del evento.
 
 ---
 
 ## Riesgos y decisiones abiertas
 
-- `git filter-repo` sobre commits viejos: **NO ejecutado**. Requiere `push --force` a main, riesgoso. Pendiente ejecución manual del usuario si lo desea.
-- BRE-B: sin credenciales sandbox propias, el módulo se construye como integración genérica donde el cliente pega su llave/QR.
-- Auth0: descartado. Solo Supabase Auth.
+- **BRE-B / PSE:** sin credenciales sandbox propias, se construye como
+  integración donde el organizador pega su llave y QR estático.
+- **Filter-repo en `main`:** pendiente decisión del usuario (requiere
+  `push --force` a `origin/main`).
+- **Auth0:** descartado. Solo Supabase Auth.
+- **Next.js vs Vite:** confirmado Vite. SEO de páginas públicas se atenderá con
+  prerender selectivo si es necesario, no migrando a Next.
+- **shadcn/ui:** descartado. Se conserva el sistema de componentes Tailwind
+  custom porque ya tiene identidad consistente (estilo Apple/Anthropic).

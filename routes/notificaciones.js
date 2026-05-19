@@ -1,77 +1,75 @@
-const router = require('express').Router();
-const webpush = require('web-push');
+/* GESTEK — Notificaciones in-app del usuario logueado.
+   GET    /me/notificaciones            — lista (paginada) + contador no leídas
+   PATCH  /me/notificaciones/:id/leer   — marca una como leída
+   POST   /me/notificaciones/leer-todas — marca todas como leídas
+   DELETE /me/notificaciones/:id        — borra una
+*/
 
-// Claves VAPID desde variables de entorno (nunca en el codigo)
-const VAPID_PUBLIC  = process.env.VAPID_PUBLIC;
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE;
-const VAPID_EMAIL   = process.env.VAPID_EMAIL || 'mailto:cristhian@test.com';
+const express = require('express');
+const supabase = require('../lib/supabase.js');
+const { verifySupabaseJWT } = require('../middleware/auth.js');
 
-webpush.setVapidDetails(
-  VAPID_EMAIL,
-  VAPID_PUBLIC,
-  VAPID_PRIVATE
-);
+const router = express.Router();
+router.use(verifySupabaseJWT);
 
-// Guardamos las suscripciones en memoria
-let suscripciones = [];
+router.get('/me/notificaciones', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 30, 100);
 
-// GET /notificaciones/vapid-key — el frontend necesita esta clave
-router.get('/vapid-key', (req, res) => {
-  res.json({ publicKey: VAPID_PUBLIC });
+  const { data, error } = await supabase
+    .from('notificaciones')
+    .select('id, tipo, titulo, cuerpo, link, evento_id, leida, created_at')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) return res.status(500).json({ error: error.message });
+
+  const { count, error: e2 } = await supabase
+    .from('notificaciones')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', req.user.id)
+    .eq('leida', false);
+  if (e2) return res.status(500).json({ error: e2.message });
+
+  res.json({ notificaciones: data || [], no_leidas: count ?? 0 });
 });
 
-// POST /notificaciones/subscribe — el navegador se suscribe
-router.post('/subscribe', (req, res) => {
-  const suscripcion = req.body;
-
-  if (!suscripcion || !suscripcion.endpoint) {
-    return res.status(400).json({ error: 'Suscripcion invalida' });
-  }
-
-  // Evitar duplicados
-  const existe = suscripciones.find(s => s.endpoint === suscripcion.endpoint);
-  if (!existe) {
-    suscripciones.push(suscripcion);
-  }
-
-  res.status(201).json({ mensaje: 'Suscripcion registrada exitosamente' });
+router.patch('/me/notificaciones/:id/leer', async (req, res) => {
+  const { error } = await supabase
+    .from('notificaciones')
+    .update({ leida: true })
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
-// POST /notificaciones/enviar — enviar notificacion a todos
-router.post('/enviar', (req, res) => {
-  const { titulo, mensaje } = req.body;
-
-  if (!titulo || !mensaje) {
-    return res.status(400).json({ error: 'Titulo y mensaje son obligatorios' });
-  }
-
-  const payload = JSON.stringify({
-    title: titulo,
-    body: mensaje,
-    icon: '/icon.png'
-  });
-
-  const promesas = suscripciones.map(sub =>
-    webpush.sendNotification(sub, payload).catch(err => {
-      console.error('Error enviando notificacion:', err.message);
-    })
-  );
-
-  Promise.all(promesas).then(() => {
-    res.json({
-      mensaje: `Notificacion enviada a ${suscripciones.length} suscriptores`,
-      titulo,
-      contenido: mensaje
-    });
-  });
+router.post('/me/notificaciones/leer-todas', async (req, res) => {
+  const { error } = await supabase
+    .from('notificaciones')
+    .update({ leida: true })
+    .eq('user_id', req.user.id)
+    .eq('leida', false);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
-// Funcion para usar desde otros archivos (cuando se registra un asistente)
-router.enviarNotificacion = (titulo, mensaje) => {
-  const payload = JSON.stringify({ title: titulo, body: mensaje });
-  suscripciones.forEach(sub => {
-    webpush.sendNotification(sub, payload).catch(() => {});
-  });
-};
+router.delete('/me/notificaciones/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('notificaciones')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+/* POST /me/notificaciones/generar-recordatorios — dispara manualmente la
+   función SQL de recordatorios in-app. Útil para testear sin esperar el cron.
+   Cualquier usuario autenticado puede llamarlo (la función es global e idempotente). */
+router.post('/me/notificaciones/generar-recordatorios', async (req, res) => {
+  const { data, error } = await supabase.rpc('generar_recordatorios_inapp');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, creadas: data ?? 0 });
+});
 
 module.exports = router;
