@@ -47,6 +47,15 @@ export default function DashboardPage() {
   const saludo  = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
   const nombre  = usuario?.nombre?.split(' ')[0] || 'Usuario';
 
+  // Próximo evento publicado con fecha futura
+  const proximoEvento = eventos
+    .filter(e => e.estado === 'publicado' && e.fecha_inicio && new Date(e.fecha_inicio) > new Date())
+    .sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio))[0];
+
+  const diasParaEvento = proximoEvento
+    ? Math.ceil((new Date(proximoEvento.fecha_inicio) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
   return (
     <div className="space-y-10 animate-[fadeUp_0.4s_ease_both]">
       {/* SALUDO */}
@@ -63,6 +72,31 @@ export default function DashboardPage() {
           Crear evento
         </Link>
       </header>
+
+      {/* BANNER: próximo evento */}
+      {!loading && proximoEvento && (
+        <Link
+          to={`/eventos/${proximoEvento.id}`}
+          className="flex items-center justify-between gap-4 px-6 py-4 rounded-2xl border border-primary/25 bg-primary/5 hover:bg-primary/10 transition-all animate-[fadeUp_0.4s_ease_both]"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center flex-shrink-0">
+              <CalendarIcon className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-primary-light font-semibold uppercase tracking-widest mb-0.5">Próximo evento</p>
+              <p className="text-sm font-semibold text-text-1 truncate">{proximoEvento.titulo}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="text-right">
+              <p className="text-2xl font-bold font-display text-text-1 tabular-nums leading-none">{diasParaEvento}</p>
+              <p className="text-[10px] text-text-3 uppercase tracking-wide">{diasParaEvento === 1 ? 'día' : 'días'}</p>
+            </div>
+            <svg className="w-4 h-4 text-text-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </div>
+        </Link>
+      )}
 
       {/* TABLERO: izquierda (eventos) + derecha (stats 2x2) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -227,6 +261,9 @@ function SystemDot({ label, ok }) {
 
 function PlusIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>;
+}
+function CalendarIcon({ className }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 }
 function LightbulbIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>;
