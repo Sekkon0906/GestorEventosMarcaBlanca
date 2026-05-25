@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/auth'         : 'http://localhost:3000',
-      '/eventos'      : 'http://localhost:3000',
+      '^/eventos(?:/\\d+|/categorias|$|\\?.*|/$)': { target: 'http://localhost:3000', rewrite: p => p },
       '/usuarios'     : 'http://localhost:3000',
       '/api'          : 'http://localhost:3000',
       '/qr'           : 'http://localhost:3000',

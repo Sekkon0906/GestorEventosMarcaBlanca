@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { eventosApi } from '../../api/eventos.js';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -156,11 +156,12 @@ export default function EventCreatePage() {
                         value={form.ubicacion.lugar} onChange={e => updateUbic('lugar', e.target.value)} />
                     </div>
                   </div>
-                  <div className="field">
-                    <label className="label">Dirección</label>
-                    <input type="text" className="input" placeholder="Calle 26 # 59-51"
-                      value={form.ubicacion.direccion} onChange={e => updateUbic('direccion', e.target.value)} />
-                  </div>
+                  <DireccionConMapa
+                    value={form.ubicacion.direccion}
+                    ciudad={form.ubicacion.ciudad}
+                    lugar={form.ubicacion.lugar}
+                    onChange={val => updateUbic('direccion', val)}
+                  />
                 </>
               )}
               {(form.modalidad === 'virtual' || form.modalidad === 'hibrido') && (
@@ -268,6 +269,51 @@ export default function EventCreatePage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Mini mapa con iframe al escribir dirección ───────────────────────────────
+function DireccionConMapa({ value, ciudad, lugar, onChange }) {
+  const [mapaSrc, setMapaSrc] = useState('');
+  const timerRef = useRef(null);
+
+  // Espera 800ms después de que el usuario deja de escribir para actualizar el mapa
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const texto = [value, lugar, ciudad].filter(Boolean).join(', ');
+    if (!texto.trim()) { setMapaSrc(''); return; }
+    timerRef.current = setTimeout(() => {
+      setMapaSrc(`https://maps.google.com/maps?q=${encodeURIComponent(texto)}&output=embed&z=15`);
+    }, 800);
+  }, [value, ciudad, lugar]);
+
+  return (
+    <div className="field">
+      <label className="label">Dirección</label>
+      <input
+        type="text"
+        className="input"
+        placeholder="Calle 26 # 59-51"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+      {mapaSrc && (
+        <div className="mt-2 rounded-xl overflow-hidden border border-border" style={{ height: 180 }}>
+          <iframe
+            title="vista-previa-mapa"
+            width="100%"
+            height="180"
+            style={{ border: 0 }}
+            loading="lazy"
+            allowFullScreen
+            src={mapaSrc}
+          />
+        </div>
+      )}
+      {!mapaSrc && value && (
+        <p className="text-[11px] text-text-3 mt-1 animate-pulse">Cargando mapa...</p>
+      )}
     </div>
   );
 }
