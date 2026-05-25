@@ -9,6 +9,7 @@ import DateTimePicker  from '../../components/ui/DateTimePicker.jsx';
 import LinksEditor     from '../../components/ui/LinksEditor.jsx';
 import CoverUploader   from '../../components/ui/CoverUploader.jsx';
 import GalleryUploader from '../../components/ui/GalleryUploader.jsx';
+import MapboxMap       from '../../components/ui/MapboxMap.jsx';
 
 /* Edición flat de un evento. Todos los campos visibles a la vez,
    sin wizard. Pensado para ajustes rápidos sobre borradores o publicados. */
@@ -240,30 +241,28 @@ function ChevronIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
 }
 
-/* Mini mapa preview que se actualiza con debounce de 600ms para no spamear iframes */
 function MapaPreview({ lugar, direccion }) {
   const query = [direccion, lugar].filter(Boolean).join(', ').trim();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query), 600);
+    const t = setTimeout(() => setDebouncedQuery(query), 700);
     return () => clearTimeout(t);
   }, [query]);
 
   if (!debouncedQuery) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-surface/20 px-4 py-6 text-center text-xs text-text-3">
-        Escribe el lugar o la dirección para previsualizar el mapa real.
+        Escribe el lugar o la dirección para previsualizar el mapa.
       </div>
     );
   }
 
-  const src = `https://www.google.com/maps?q=${encodeURIComponent(debouncedQuery)}&output=embed`;
   return (
     <div>
       <p className="text-[11px] uppercase tracking-widest text-text-3 font-semibold mb-2">Vista del mapa</p>
       <div className="aspect-video rounded-2xl overflow-hidden border border-border-2">
-        <iframe src={src} className="w-full h-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa" />
+        <MapboxMap query={debouncedQuery} />
       </div>
       <p className="text-[11px] text-text-3 mt-1.5">Los asistentes verán este mapa con botón &quot;Cómo llegar&quot; en la página pública (agregando el bloque Mapa).</p>
     </div>

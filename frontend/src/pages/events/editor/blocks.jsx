@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import ImagePicker from '../../../components/ui/ImagePicker.jsx';
+import MapboxMap   from '../../../components/ui/MapboxMap.jsx';
 
 /* ─────────── helpers ─────────── */
 
@@ -644,8 +645,15 @@ function SponsorsPreview({ data }) {
 
 /* ─── MAPA ─── */
 function MapaEditor({ data, onChange, evento }) {
-  const direccion = data.direccion || evento?.location_direccion || evento?.location_nombre || '';
-  const embedSrc = direccion ? `https://www.google.com/maps?q=${encodeURIComponent(direccion)}&output=embed` : null;
+  const rawDireccion = data.direccion || evento?.location_direccion || evento?.location_nombre || '';
+  const [preview, setPreview] = useState(rawDireccion);
+
+  useEffect(() => {
+    const q = data.direccion || evento?.location_direccion || evento?.location_nombre || '';
+    const t = setTimeout(() => setPreview(q), 700);
+    return () => clearTimeout(t);
+  }, [data.direccion, evento?.location_direccion, evento?.location_nombre]);
+
   return (
     <div className="space-y-3">
       <input value={data.titulo || ''} onChange={e => onChange({ ...data, titulo: e.target.value })}
@@ -654,9 +662,9 @@ function MapaEditor({ data, onChange, evento }) {
       <input value={data.direccion || ''} onChange={e => onChange({ ...data, direccion: e.target.value })}
         placeholder={`Dirección o lugar (default: ${evento?.location_direccion || evento?.location_nombre || 'sin dirección'})`}
         className="input rounded-xl py-2 text-sm" />
-      {embedSrc && (
+      {preview && (
         <div className="aspect-video rounded-2xl overflow-hidden border border-border">
-          <iframe src={embedSrc} className="w-full h-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          <MapboxMap query={preview} />
         </div>
       )}
     </div>
@@ -665,13 +673,12 @@ function MapaEditor({ data, onChange, evento }) {
 function MapaPreview({ data, evento }) {
   const direccion = data.direccion || evento?.location_direccion || evento?.location_nombre;
   if (!direccion) return null;
-  const embedSrc = `https://www.google.com/maps?q=${encodeURIComponent(direccion)}&output=embed`;
-  const linkSrc  = `https://www.google.com/maps?q=${encodeURIComponent(direccion)}`;
+  const linkSrc = `https://www.google.com/maps?q=${encodeURIComponent(direccion)}`;
   return (
     <div>
       {data.titulo && <h2 className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-text-1 mb-4">{data.titulo}</h2>}
       <div className="rounded-3xl overflow-hidden border border-border mb-3 aspect-video">
-        <iframe src={embedSrc} className="w-full h-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa" />
+        <MapboxMap query={direccion} />
       </div>
       <a href={linkSrc} target="_blank" rel="noreferrer noopener"
         className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-surface/40 hover:bg-surface text-sm text-text-1 transition-all">

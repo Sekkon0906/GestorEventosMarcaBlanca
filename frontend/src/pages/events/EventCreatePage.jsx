@@ -8,6 +8,7 @@ import DateTimePicker  from '../../components/ui/DateTimePicker.jsx';
 import LinksEditor     from '../../components/ui/LinksEditor.jsx';
 import CoverUploader   from '../../components/ui/CoverUploader.jsx';
 import GalleryUploader from '../../components/ui/GalleryUploader.jsx';
+import MapboxMap       from '../../components/ui/MapboxMap.jsx';
 
 const STEPS = ['Información básica', 'Imágenes', 'Fecha y lugar', 'Revisión'];
 
@@ -192,6 +193,7 @@ export default function EventCreatePage() {
                     <input type="text" className="input" placeholder="Calle 26 # 59-51"
                       value={form.location_direccion} onChange={e => update('location_direccion', e.target.value)} />
                   </div>
+                  <MapaPreview lugar={form.location_nombre} direccion={form.location_direccion} />
                 </>
               )}
               <LinksEditor
@@ -260,6 +262,27 @@ export default function EventCreatePage() {
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function MapaPreview({ lugar, direccion }) {
+  const query = [direccion, lugar].filter(Boolean).join(', ').trim();
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 700);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  if (!debouncedQuery) return null;
+
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-widest text-text-3 font-semibold mb-2">Vista del mapa</p>
+      <div className="aspect-video rounded-2xl overflow-hidden border border-border-2">
+        <MapboxMap query={debouncedQuery} />
       </div>
     </div>
   );
